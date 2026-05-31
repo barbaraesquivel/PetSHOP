@@ -1,10 +1,7 @@
-// REQUIERE: Newtonsoft.Json instalado via NuGet (ya esta en Bin/)
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
-using System.IO;
-using Newtonsoft.Json;
 
 public partial class WebMaster : System.Web.UI.Page
 {
@@ -37,9 +34,7 @@ public partial class WebMaster : System.Web.UI.Page
             Bitacora.Registrar(Session["Usuario"].ToString(), "ACCESO", "WebMaster.aspx");
     }
 
-    // Verifica todos los hashes, actualiza la tabla y muestra el panel correspondiente.
-    // Se llama en Page_Load Y al final de cada operacion de reparacion,
-    // para que el estado mostrado siempre refleje la situacion actual.
+    // Verifica todos los hashes y actualiza los paneles de estado
     private void ActualizarEstadoIntegridad()
     {
         try
@@ -83,9 +78,8 @@ public partial class WebMaster : System.Web.UI.Page
             gvIntegridad.DataBind();
             gvIntegridad.Visible = (resultados.Count > 0);
 
-            // Mostramos el panel segun el resultado
-            pnlCorrupto.Visible  = hayCorrupcion;
-            pnlEstadoOK.Visible  = !hayCorrupcion;
+            pnlCorrupto.Visible = hayCorrupcion;
+            pnlEstadoOK.Visible = !hayCorrupcion;
         }
         catch (Exception ex)
         {
@@ -93,8 +87,7 @@ public partial class WebMaster : System.Web.UI.Page
         }
     }
 
-    // Boton 1: recalcula los hashes a partir de los datos actuales y los guarda.
-    // Esto "acepta" los datos actuales como validos y corrige el HashVerificador.
+    // Boton 1: recalcula los HashVerificador a partir de los datos actuales
     protected void btnRecalcularHashes_Click(object sender, EventArgs e)
     {
         try
@@ -104,7 +97,6 @@ public partial class WebMaster : System.Web.UI.Page
                 con.Open();
                 RecalcularHashes(con);
             }
-
             Bitacora.Registrar(Session["Usuario"].ToString(), "RECALCULAR_HASHES",
                 "HashVerificador recalculado para todos los productos");
             MostrarMsg("Digitos verificadores recalculados y guardados correctamente.", false);
@@ -114,54 +106,27 @@ public partial class WebMaster : System.Web.UI.Page
             MostrarMsg("Error al recalcular hashes: " + ex.Message, true);
         }
 
-        // Actualizamos el estado para reflejar los nuevos hashes
         ActualizarEstadoIntegridad();
     }
 
-    // Boton 2: restaura la BD automaticamente desde App_Data/backup.json
-    // El sistema lo hace solo, sin intervencion manual adicional.
+    // Boton 2: restaura la BD ejecutando el stored procedure SP_RestaurarBD
     protected void btnRestaurarBD_Click(object sender, EventArgs e)
     {
         try
         {
-            string archivo = Server.MapPath("~/App_Data/backup.json");
-            if (!File.Exists(archivo))
-            {
-                MostrarMsg("No se encontro el archivo de backup (App_Data/backup.json). Haga un backup primero.", true);
-                return;
-            }
-
-            string     json  = File.ReadAllText(archivo);
-            BackupData datos = JsonConvert.DeserializeObject<BackupData>(json);
-
-            DataTable dtUsuarios   = Deserializar(datos.UsuariosJson);
-            DataTable dtProductos  = Deserializar(datos.ProductosJson);
-            DataTable dtPedidos    = Deserializar(datos.PedidosJson);
-            DataTable dtDetalle    = Deserializar(datos.DetalleJson);
-            DataTable dtEliminados = Deserializar(datos.EliminadosJson);
-
             using (SqlConnection con = ConexionDB.ObtenerConexion())
             {
                 con.Open();
 
-                // Borrar en orden respetando FK
-                EjecutarSQL("DELETE FROM DetallePedido", con);
-                EjecutarSQL("DELETE FROM Pedidos",       con);
-                EjecutarSQL("DELETE FROM Eliminados",    con);
-                EjecutarSQL("DELETE FROM Productos",     con);
-                EjecutarSQL("DELETE FROM Usuarios",      con);
+                SqlCommand cmd = new SqlCommand("SP_RestaurarBD", con);
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.ExecuteNonQuery();
 
-                // Reinsertar en orden inverso
-                if (dtUsuarios.Rows.Count   > 0) InsertarUsuarios(dtUsuarios, con);
-                if (dtProductos.Rows.Count  > 0) InsertarProductos(dtProductos, con);
-                if (dtPedidos.Rows.Count    > 0) InsertarPedidos(dtPedidos, con);
-                if (dtDetalle.Rows.Count    > 0) InsertarDetalles(dtDetalle, con);
-                if (dtEliminados.Rows.Count > 0) InsertarEliminados(dtEliminados, con);
-
+                // Recalculamos hashes despues de restaurar
                 RecalcularHashes(con);
             }
 
-            string msg = "Restauracion exitosa desde backup del " + datos.FechaBackup;
+            string msg = "Restauracion exitosa desde el ultimo backup";
             Bitacora.Registrar(Session["Usuario"].ToString(), "RESTORE", msg);
             MostrarMsg(msg, false);
         }
@@ -170,11 +135,10 @@ public partial class WebMaster : System.Web.UI.Page
             MostrarMsg("Error en la restauracion: " + ex.Message, true);
         }
 
-        // Actualizamos el estado para confirmar que la BD quedo integra
         ActualizarEstadoIntegridad();
     }
 
-    // Seccion c: backup de todas las tablas
+    // Seccion c: llama al stored procedure SP_HacerBackup
     protected void btnBackup_Click(object sender, EventArgs e)
     {
         try
@@ -182,19 +146,9 @@ public partial class WebMaster : System.Web.UI.Page
             using (SqlConnection con = ConexionDB.ObtenerConexion())
             {
                 con.Open();
-
-                BackupData datos = new BackupData();
-                datos.FechaBackup    = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                datos.UsuariosJson   = JsonConvert.SerializeObject(LeerTabla("SELECT * FROM Usuarios",      con));
-                datos.ProductosJson  = JsonConvert.SerializeObject(LeerTabla("SELECT * FROM Productos",     con));
-                datos.PedidosJson    = JsonConvert.SerializeObject(LeerTabla("SELECT * FROM Pedidos",       con));
-                datos.DetalleJson    = JsonConvert.SerializeObject(LeerTabla("SELECT * FROM DetallePedido", con));
-                datos.EliminadosJson = JsonConvert.SerializeObject(LeerTabla("SELECT * FROM Eliminados",    con));
-
-                string json    = JsonConvert.SerializeObject(datos, Formatting.Indented);
-                string carpeta = Server.MapPath("~/App_Data");
-                if (!Directory.Exists(carpeta)) Directory.CreateDirectory(carpeta);
-                File.WriteAllText(Path.Combine(carpeta, "backup.json"), json);
+                SqlCommand cmd = new SqlCommand("SP_HacerBackup", con);
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.ExecuteNonQuery();
             }
 
             string msg = "Backup realizado: " + DateTime.Now.ToString("dd/MM/yyyy HH:mm");
@@ -207,143 +161,7 @@ public partial class WebMaster : System.Web.UI.Page
         }
     }
 
-    // ===== HELPERS =====
-
-    private DataTable LeerTabla(string sql, SqlConnection con)
-    {
-        SqlDataAdapter da = new SqlDataAdapter(sql, con);
-        DataTable dt = new DataTable();
-        da.Fill(dt);
-        return dt;
-    }
-
-    private DataTable Deserializar(string json)
-    {
-        if (string.IsNullOrEmpty(json)) return new DataTable();
-        return JsonConvert.DeserializeObject<DataTable>(json);
-    }
-
-    private void EjecutarSQL(string sql, SqlConnection con)
-    {
-        new SqlCommand(sql, con).ExecuteNonQuery();
-    }
-
-    // Columnas reales de Usuarios: IdUsuario, NombreUsuario, PasswordHash, Rol
-    private void InsertarUsuarios(DataTable dt, SqlConnection con)
-    {
-        try
-        {
-            EjecutarSQL("SET IDENTITY_INSERT Usuarios ON", con);
-            foreach (DataRow row in dt.Rows)
-            {
-                SqlCommand cmd = new SqlCommand(
-                    @"INSERT INTO Usuarios (IdUsuario, NombreUsuario, PasswordHash, Rol)
-                      VALUES (@id, @nombre, @hash, @rol)", con);
-                cmd.Parameters.AddWithValue("@id",     row["IdUsuario"]);
-                cmd.Parameters.AddWithValue("@nombre", row["NombreUsuario"]);
-                cmd.Parameters.AddWithValue("@hash",   row["PasswordHash"]);
-                cmd.Parameters.AddWithValue("@rol",    row["Rol"]);
-                cmd.ExecuteNonQuery();
-            }
-        }
-        finally { try { EjecutarSQL("SET IDENTITY_INSERT Usuarios OFF", con); } catch { } }
-    }
-
-    // Columnas reales: IdProducto, Nombre, Descripcion, Precio, Categoria, Activo, HashVerificador
-    private void InsertarProductos(DataTable dt, SqlConnection con)
-    {
-        try
-        {
-            EjecutarSQL("SET IDENTITY_INSERT Productos ON", con);
-            foreach (DataRow row in dt.Rows)
-            {
-                SqlCommand cmd = new SqlCommand(
-                    @"INSERT INTO Productos (IdProducto, Nombre, Descripcion, Precio, Categoria, Activo, HashVerificador)
-                      VALUES (@id, @nombre, @desc, @precio, @cat, @activo, @hash)", con);
-                cmd.Parameters.AddWithValue("@id",     row["IdProducto"]);
-                cmd.Parameters.AddWithValue("@nombre", row["Nombre"]);
-                cmd.Parameters.AddWithValue("@desc",   row["Descripcion"] == DBNull.Value ? (object)DBNull.Value : row["Descripcion"]);
-                cmd.Parameters.AddWithValue("@precio", row["Precio"]);
-                cmd.Parameters.AddWithValue("@cat",    row["Categoria"]);
-                cmd.Parameters.AddWithValue("@activo", row["Activo"]);
-                cmd.Parameters.AddWithValue("@hash",   row["HashVerificador"] == DBNull.Value ? (object)DBNull.Value : row["HashVerificador"]);
-                cmd.ExecuteNonQuery();
-            }
-        }
-        finally { try { EjecutarSQL("SET IDENTITY_INSERT Productos OFF", con); } catch { } }
-    }
-
-    // Columnas reales: IdPedido, IdUsuario, FechaPedido, Total, Estado, ModificadoPor, FechaModif
-    private void InsertarPedidos(DataTable dt, SqlConnection con)
-    {
-        try
-        {
-            EjecutarSQL("SET IDENTITY_INSERT Pedidos ON", con);
-            foreach (DataRow row in dt.Rows)
-            {
-                SqlCommand cmd = new SqlCommand(
-                    @"INSERT INTO Pedidos (IdPedido, IdUsuario, FechaPedido, Total, Estado, ModificadoPor, FechaModif)
-                      VALUES (@id, @idUsuario, @fecha, @total, @estado, @modPor, @fechaModif)", con);
-                cmd.Parameters.AddWithValue("@id",         row["IdPedido"]);
-                cmd.Parameters.AddWithValue("@idUsuario",  row["IdUsuario"]);
-                cmd.Parameters.AddWithValue("@fecha",      row["FechaPedido"]);
-                cmd.Parameters.AddWithValue("@total",      row["Total"]);
-                cmd.Parameters.AddWithValue("@estado",     row["Estado"]);
-                cmd.Parameters.AddWithValue("@modPor",     row["ModificadoPor"] == DBNull.Value ? (object)DBNull.Value : row["ModificadoPor"]);
-                cmd.Parameters.AddWithValue("@fechaModif", row["FechaModif"]    == DBNull.Value ? (object)DBNull.Value : row["FechaModif"]);
-                cmd.ExecuteNonQuery();
-            }
-        }
-        finally { try { EjecutarSQL("SET IDENTITY_INSERT Pedidos OFF", con); } catch { } }
-    }
-
-    // Columnas reales: IdDetalle, IdPedido, NombreProducto, PrecioUnitario, Cantidad, Subtotal
-    private void InsertarDetalles(DataTable dt, SqlConnection con)
-    {
-        try
-        {
-            EjecutarSQL("SET IDENTITY_INSERT DetallePedido ON", con);
-            foreach (DataRow row in dt.Rows)
-            {
-                SqlCommand cmd = new SqlCommand(
-                    @"INSERT INTO DetallePedido (IdDetalle, IdPedido, NombreProducto, PrecioUnitario, Cantidad, Subtotal)
-                      VALUES (@id, @idPedido, @nombre, @precio, @cantidad, @subtotal)", con);
-                cmd.Parameters.AddWithValue("@id",       row["IdDetalle"]);
-                cmd.Parameters.AddWithValue("@idPedido", row["IdPedido"]);
-                cmd.Parameters.AddWithValue("@nombre",   row["NombreProducto"]);
-                cmd.Parameters.AddWithValue("@precio",   row["PrecioUnitario"]);
-                cmd.Parameters.AddWithValue("@cantidad", row["Cantidad"]);
-                cmd.Parameters.AddWithValue("@subtotal", row["Subtotal"]);
-                cmd.ExecuteNonQuery();
-            }
-        }
-        finally { try { EjecutarSQL("SET IDENTITY_INSERT DetallePedido OFF", con); } catch { } }
-    }
-
-    // Columnas reales: IdEliminado, Tipo, Descripcion, RealizadoPor, FechaHora, EsExterno
-    private void InsertarEliminados(DataTable dt, SqlConnection con)
-    {
-        try
-        {
-            EjecutarSQL("SET IDENTITY_INSERT Eliminados ON", con);
-            foreach (DataRow row in dt.Rows)
-            {
-                SqlCommand cmd = new SqlCommand(
-                    @"INSERT INTO Eliminados (IdEliminado, Tipo, Descripcion, RealizadoPor, FechaHora, EsExterno)
-                      VALUES (@id, @tipo, @desc, @por, @fecha, @esExt)", con);
-                cmd.Parameters.AddWithValue("@id",    row["IdEliminado"]);
-                cmd.Parameters.AddWithValue("@tipo",  row["Tipo"]);
-                cmd.Parameters.AddWithValue("@desc",  row["Descripcion"]);
-                cmd.Parameters.AddWithValue("@por",   row["RealizadoPor"]);
-                cmd.Parameters.AddWithValue("@fecha", row["FechaHora"]);
-                cmd.Parameters.AddWithValue("@esExt", row["EsExterno"]);
-                cmd.ExecuteNonQuery();
-            }
-        }
-        finally { try { EjecutarSQL("SET IDENTITY_INSERT Eliminados OFF", con); } catch { } }
-    }
-
-    // Recalcula HashVerificador para todos los productos y los actualiza en BD
+    // Recalcula y guarda el HashVerificador de todos los productos
     private void RecalcularHashes(SqlConnection con)
     {
         List<int>    ids    = new List<int>();
