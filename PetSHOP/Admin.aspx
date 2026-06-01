@@ -8,29 +8,34 @@
         body { font-family: Arial, sans-serif; background-color: #f0f0f0; margin: 0; padding: 0; }
         #cabecera { background-color: #336699; color: white; padding: 10px 15px; }
         #cabecera a { color: white; margin-left: 10px; }
-        #contenido { width: 950px; margin: 15px auto; background: white; border: 1px solid #ccc; padding: 15px; }
+        #contenido { width: 980px; margin: 15px auto; background: white; border: 1px solid #ccc; padding: 15px; }
         .tabla { width: 100%; border-collapse: collapse; margin-top: 8px; }
         .tabla th { background-color: #336699; color: white; padding: 7px; border: 1px solid #ccc; text-align: left; }
         .tabla td { border: 1px solid #ccc; padding: 7px; font-size: 13px; }
         .tabla tr:nth-child(even) { background-color: #f5f5f5; }
+        .tabla tr[data-fila]:hover { background-color: #e3f2fd; cursor: pointer; }
         .form-inline td { padding: 5px 8px; }
-        .btn         { background-color: #336699; color: white; border: none; padding: 4px 10px; cursor: pointer; }
-        .btn-agregar { background-color: #2e7d32; color: white; border: none; padding: 4px 10px; cursor: pointer; }
-        .btn-editar  { background-color: #e65100; color: white; border: none; padding: 3px 8px; cursor: pointer; }
-        .btn-danger  { background-color: #cc0000; color: white; border: none; padding: 3px 8px; cursor: pointer; }
+        .btn         { background-color: #336699; color: white; border: none; padding: 5px 12px; cursor: pointer; }
+        .btn-agregar { background-color: #2e7d32; color: white; border: none; padding: 5px 12px; cursor: pointer; }
+        .btn-editar  { background-color: #e65100; color: white; border: none; padding: 5px 12px; cursor: pointer; }
+        .btn-danger  { background-color: #cc0000; color: white; border: none; padding: 5px 12px; cursor: pointer; }
         .msg { font-weight: bold; margin: 6px 0; padding: 6px; }
         .msg-ok  { color: green; background: #e8f5e9; border: 1px solid #a5d6a7; }
         .msg-err { color: red;   background: #ffebee; border: 1px solid #ef9a9a; }
         .modo-lectura { color: #e65100; font-weight: bold; }
         .denegado { color: red; font-size: 18px; font-weight: bold; margin: 30px; }
-        .panel-form { background: #f9f9f9; border: 1px solid #ddd; padding: 12px; margin-bottom: 12px; }
+        .panel-form { background: #f9f9f9; border: 1px solid #ddd; padding: 12px; margin: 8px 0; }
         .inactivo { color: #cc0000; }
         .activo   { color: #2e7d32; }
+        .hint-seleccion { font-size: 12px; color: #777; margin: 4px 0 0 0; }
         input[type=text], input[type=password], select { padding: 4px; border: 1px solid #aaa; }
     </style>
 </head>
 <body>
     <form id="form1" runat="server">
+
+        <asp:HiddenField ID="hfSelectedUserId" runat="server" Value="0" />
+        <asp:HiddenField ID="hfSelectedProdId" runat="server" Value="0" />
 
         <div id="cabecera">
             <strong>PetShop - Panel Admin</strong>
@@ -55,15 +60,15 @@
                 <!-- ===== SECCION A: USUARIOS ===== -->
                 <h4>a) Gestion de Usuarios</h4>
 
-                <!-- Formulario agregar (solo Admin) -->
+                <!-- Formulario agregar + botones de accion sobre seleccionado -->
                 <asp:Panel ID="pnlFormUsuario" runat="server" CssClass="panel-form">
-                    <b>Agregar nuevo usuario:</b>
                     <table class="form-inline">
                         <tr>
-                            <td>Nombre de usuario:</td>
-                            <td><asp:TextBox ID="txtNombreU" runat="server" MaxLength="50" /></td>
+                            <td><b>Agregar usuario:</b></td>
+                            <td>Nombre:</td>
+                            <td><asp:TextBox ID="txtNombreU" runat="server" MaxLength="50" Width="120px" /></td>
                             <td>Contrasena:</td>
-                            <td><asp:TextBox ID="txtPassU" runat="server" TextMode="Password" MaxLength="100" /></td>
+                            <td><asp:TextBox ID="txtPassU" runat="server" TextMode="Password" MaxLength="100" Width="120px" /></td>
                             <td>Rol:</td>
                             <td>
                                 <asp:DropDownList ID="ddlRolU" runat="server">
@@ -72,17 +77,23 @@
                                     <asp:ListItem Value="WebMaster">WebMaster</asp:ListItem>
                                 </asp:DropDownList>
                             </td>
-                        </tr>
-                        <tr>
-                            <td colspan="6">
-                                <asp:Button ID="btnAgregarUsuario" runat="server" Text="Agregar usuario"
+                            <td>
+                                <asp:Button ID="btnAgregarUsuario" runat="server" Text="Agregar"
                                     CssClass="btn-agregar" OnClick="btnAgregarUsuario_Click" />
+                            </td>
+                            <td style="padding-left:20px; border-left:1px solid #ccc;">
+                                <asp:Button ID="btnEditarUsuario" runat="server" Text="Editar"
+                                    CssClass="btn-editar" OnClick="btnEditarUsuario_Click" />
+                                &nbsp;
+                                <asp:Button ID="btnEliminarUsuario" runat="server" Text="Eliminar"
+                                    CssClass="btn-danger" OnClick="btnEliminarUsuario_Click"
+                                    OnClientClick="return confirm('Eliminar el usuario seleccionado?')" />
                             </td>
                         </tr>
                     </table>
                 </asp:Panel>
 
-                <!-- Formulario editar usuario (oculto por defecto) -->
+                <!-- Formulario editar usuario -->
                 <asp:Panel ID="pnlEditarUsuario" runat="server" Visible="false" CssClass="panel-form">
                     <asp:HiddenField ID="hfIdUserEdit" runat="server" />
                     <b>Editando usuario: </b><asp:Label ID="lblNombreUserEdit" runat="server" /><br /><br />
@@ -98,30 +109,26 @@
                             </td>
                             <td>
                                 <asp:Button ID="btnGuardarUsuario"   runat="server" Text="Guardar"  CssClass="btn-agregar" OnClick="btnGuardarUsuario_Click" />
+                                &nbsp;
                                 <asp:Button ID="btnCancelarEditUser" runat="server" Text="Cancelar" CssClass="btn"         OnClick="btnCancelarEditUser_Click" />
                             </td>
                         </tr>
                     </table>
                 </asp:Panel>
 
-                <!-- Grilla de usuarios (solo Id, Nombre, Rol — la BD no tiene Email ni Activo) -->
+                <p class="hint-seleccion">&#8593; Haga clic en una fila para seleccionarla, luego use Editar o Eliminar.</p>
+
+                <!-- Grilla de usuarios — sin columna Acciones, filas clickeables -->
                 <asp:GridView ID="gvUsuarios" runat="server"
                     AutoGenerateColumns="false" CssClass="tabla"
-                    OnRowCommand="gvUsuarios_RowCommand"
+                    DataKeyNames="IdUsuario"
+                    OnSelectedIndexChanged="gvUsuarios_SelectedIndexChanged"
                     OnRowDataBound="gvUsuarios_RowDataBound">
+                    <SelectedRowStyle BackColor="#cce5ff" Font-Bold="true" />
                     <Columns>
                         <asp:BoundField DataField="IdUsuario"     HeaderText="ID"      ItemStyle-Width="40px" />
-                        <asp:BoundField DataField="NombreUsuario" HeaderText="Usuario" ItemStyle-Width="140px" />
-                        <asp:BoundField DataField="Rol"           HeaderText="Rol"     ItemStyle-Width="100px" />
-                        <asp:TemplateField HeaderText="Acciones" ItemStyle-Width="80px">
-                            <ItemTemplate>
-                                <asp:Panel ID="pnlAccionesUser" runat="server">
-                                    <asp:LinkButton CommandName="EditarUser"
-                                        CommandArgument='<%# Eval("IdUsuario") %>'
-                                        CssClass="btn-editar">Editar</asp:LinkButton>
-                                </asp:Panel>
-                            </ItemTemplate>
-                        </asp:TemplateField>
+                        <asp:BoundField DataField="NombreUsuario" HeaderText="Usuario" ItemStyle-Width="150px" />
+                        <asp:BoundField DataField="Rol"           HeaderText="Rol" />
                     </Columns>
                 </asp:GridView>
 
@@ -129,15 +136,15 @@
                 <!-- ===== SECCION B: PRODUCTOS ===== -->
                 <h4>b) Gestion de Productos y Precios</h4>
 
-                <!-- Formulario agregar producto (solo Admin) -->
+                <!-- Formulario agregar + botones de accion sobre seleccionado -->
                 <asp:Panel ID="pnlFormProducto" runat="server" CssClass="panel-form">
-                    <b>Agregar nuevo producto:</b>
                     <table class="form-inline">
                         <tr>
+                            <td><b>Agregar producto:</b></td>
                             <td>Nombre:</td>
-                            <td><asp:TextBox ID="txtNombreP" runat="server" MaxLength="100" Width="180px" /></td>
-                            <td>Precio ($):</td>
-                            <td><asp:TextBox ID="txtPrecioP" runat="server" MaxLength="10" Width="80px" /></td>
+                            <td><asp:TextBox ID="txtNombreP" runat="server" MaxLength="100" Width="140px" /></td>
+                            <td>Precio:</td>
+                            <td><asp:TextBox ID="txtPrecioP" runat="server" MaxLength="10" Width="70px" /></td>
                             <td>Categoria:</td>
                             <td>
                                 <asp:DropDownList ID="ddlCatP" runat="server">
@@ -150,19 +157,28 @@
                             </td>
                         </tr>
                         <tr>
+                            <td></td>
                             <td>Descripcion:</td>
-                            <td colspan="5"><asp:TextBox ID="txtDescP" runat="server" MaxLength="250" Width="400px" /></td>
+                            <td colspan="4"><asp:TextBox ID="txtDescP" runat="server" MaxLength="250" Width="360px" /></td>
+                            <td>
+                                <asp:Button ID="btnAgregarProducto" runat="server" Text="Agregar"
+                                    CssClass="btn-agregar" OnClick="btnAgregarProducto_Click" />
+                            </td>
                         </tr>
                         <tr>
-                            <td colspan="6">
-                                <asp:Button ID="btnAgregarProducto" runat="server" Text="Agregar producto"
-                                    CssClass="btn-agregar" OnClick="btnAgregarProducto_Click" />
+                            <td colspan="6" style="padding-top:8px; border-top:1px solid #ddd;">
+                                <asp:Button ID="btnEditarProducto" runat="server" Text="Editar seleccionado"
+                                    CssClass="btn-editar" OnClick="btnEditarProducto_Click" />
+                                &nbsp;
+                                <asp:Button ID="btnEliminarProducto" runat="server" Text="Desactivar seleccionado"
+                                    CssClass="btn-danger" OnClick="btnEliminarProducto_Click"
+                                    OnClientClick="return confirm('Desactivar el producto seleccionado?')" />
                             </td>
                         </tr>
                     </table>
                 </asp:Panel>
 
-                <!-- Formulario editar producto (oculto por defecto) -->
+                <!-- Formulario editar producto -->
                 <asp:Panel ID="pnlEditarProducto" runat="server" Visible="false" CssClass="panel-form">
                     <asp:HiddenField ID="hfIdProdEdit" runat="server" />
                     <b>Editando producto ID: </b><asp:Label ID="lblIdProdEdit" runat="server" /><br /><br />
@@ -190,43 +206,34 @@
                         <tr>
                             <td colspan="6">
                                 <asp:Button ID="btnGuardarProducto"  runat="server" Text="Guardar cambios" CssClass="btn-agregar" OnClick="btnGuardarProducto_Click" />
+                                &nbsp;
                                 <asp:Button ID="btnCancelarEditProd" runat="server" Text="Cancelar"        CssClass="btn"         OnClick="btnCancelarEditProd_Click" />
-                                <small>&nbsp; El HashVerificador se recalcula automaticamente al guardar.</small>
+                                <small>&nbsp; El HashVerificador se recalcula al guardar.</small>
                             </td>
                         </tr>
                     </table>
                 </asp:Panel>
 
-                <!-- Grilla de productos -->
+                <p class="hint-seleccion">&#8593; Haga clic en una fila para seleccionarla, luego use Editar o Desactivar.</p>
+
+                <!-- Grilla de productos — sin columna Acciones, filas clickeables -->
                 <asp:GridView ID="gvProductos" runat="server"
                     AutoGenerateColumns="false" CssClass="tabla"
-                    OnRowCommand="gvProductos_RowCommand"
+                    DataKeyNames="IdProducto"
+                    OnSelectedIndexChanged="gvProductos_SelectedIndexChanged"
                     OnRowDataBound="gvProductos_RowDataBound">
+                    <SelectedRowStyle BackColor="#cce5ff" Font-Bold="true" />
                     <Columns>
                         <asp:BoundField DataField="IdProducto"  HeaderText="ID"          ItemStyle-Width="40px" />
-                        <asp:BoundField DataField="Nombre"      HeaderText="Nombre" />
+                        <asp:BoundField DataField="Nombre"      HeaderText="Nombre"       ItemStyle-Width="160px" />
                         <asp:BoundField DataField="Descripcion" HeaderText="Descripcion" />
-                        <asp:BoundField DataField="Precio"      HeaderText="Precio"      DataFormatString="${0:N2}" ItemStyle-Width="80px" />
-                        <asp:BoundField DataField="Categoria"   HeaderText="Categoria"   ItemStyle-Width="90px" />
+                        <asp:BoundField DataField="Precio"      HeaderText="Precio"       DataFormatString="${0:N2}" ItemStyle-Width="80px" />
+                        <asp:BoundField DataField="Categoria"   HeaderText="Categoria"    ItemStyle-Width="90px" />
                         <asp:TemplateField HeaderText="Activo" ItemStyle-Width="50px">
                             <ItemTemplate>
                                 <asp:Label runat="server"
                                     Text='<%# DataBinder.Eval(Container.DataItem,"Activo").ToString()=="True" ? "Si" : "No" %>'
                                     CssClass='<%# DataBinder.Eval(Container.DataItem,"Activo").ToString()=="True" ? "activo" : "inactivo" %>' />
-                            </ItemTemplate>
-                        </asp:TemplateField>
-                        <asp:TemplateField HeaderText="Acciones" ItemStyle-Width="150px">
-                            <ItemTemplate>
-                                <asp:Panel ID="pnlAccionesProd" runat="server">
-                                    <asp:LinkButton CommandName="EditarProd"
-                                        CommandArgument='<%# Eval("IdProducto") %>'
-                                        CssClass="btn-editar">Editar</asp:LinkButton>
-                                    &nbsp;
-                                    <asp:LinkButton CommandName="DesactivarProd"
-                                        CommandArgument='<%# Eval("IdProducto") %>'
-                                        CssClass="btn-danger"
-                                        OnClientClick="return confirm('Desactivar este producto?')">Desactivar</asp:LinkButton>
-                                </asp:Panel>
                             </ItemTemplate>
                         </asp:TemplateField>
                     </Columns>
@@ -239,10 +246,9 @@
                     Filtrar por usuario:&nbsp;
                     <asp:TextBox ID="txtFiltroBit" runat="server" MaxLength="50" Width="150px" />
                     &nbsp;
-                    <asp:Button ID="btnFiltrarBit"  runat="server" Text="Filtrar"  CssClass="btn" OnClick="btnFiltrarBit_Click" />
-                    <asp:Button ID="btnVerTodoBit"  runat="server" Text="Ver todo" CssClass="btn" OnClick="btnVerTodoBit_Click" />
+                    <asp:Button ID="btnFiltrarBit" runat="server" Text="Filtrar"  CssClass="btn" OnClick="btnFiltrarBit_Click" />
+                    <asp:Button ID="btnVerTodoBit" runat="server" Text="Ver todo" CssClass="btn" OnClick="btnVerTodoBit_Click" />
                 </p>
-
                 <asp:GridView ID="gvBitacora" runat="server"
                     AutoGenerateColumns="false" CssClass="tabla">
                     <Columns>

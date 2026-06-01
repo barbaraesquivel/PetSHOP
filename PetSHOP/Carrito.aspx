@@ -100,7 +100,7 @@
         <div id="cabecera">
             <strong>PetShop</strong>
             &nbsp;&nbsp;|&nbsp;&nbsp;
-            <a href="Menu.aspx">← Volver al catalogo</a>
+            <a href="Menu.aspx"> Volver al catalogo</a>
         </div>
 
         <div id="contenido">
