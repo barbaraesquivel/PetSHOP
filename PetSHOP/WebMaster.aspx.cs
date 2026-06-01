@@ -27,18 +27,17 @@ public partial class WebMaster : System.Web.UI.Page
         pnlDenegado.Visible  = false;
         lblWMUser.Text       = Session["Usuario"].ToString();
 
-        // Al entrar, el sistema verifica automaticamente la integridad de la BD
+
         ActualizarEstadoIntegridad();
 
         if (!IsPostBack)
             Bitacora.Registrar(Session["Usuario"].ToString(), "ACCESO", "WebMaster.aspx");
     }
 
-    // Verifica todos los hashes y actualiza los paneles de estado
+
     private void ActualizarEstadoIntegridad()
     {
-        // Resetear los tres paneles antes de verificar para evitar que ViewState
-        // muestre un estado obsoleto si el chequeo falla a mitad de camino
+
         pnlCorrupto.Visible         = false;
         pnlEstadoOK.Visible         = false;
         pnlErrorVerificacion.Visible = false;
@@ -80,8 +79,7 @@ public partial class WebMaster : System.Web.UI.Page
                 reader.Close();
             }
 
-            // Asignar paneles ANTES del DataBind para que queden correctos
-            // aunque el grid falle al renderizar
+
             pnlCorrupto.Visible = hayCorrupcion;
             pnlEstadoOK.Visible = !hayCorrupcion;
 
@@ -89,7 +87,6 @@ public partial class WebMaster : System.Web.UI.Page
                 Bitacora.Registrar(Session["Usuario"].ToString(), "INTEGRIDAD_ALERTA",
                     "Se detectaron productos con hashVerificador no coincidente");
 
-            // Binding del grid en bloque separado: un fallo aqui no afecta los paneles
             try
             {
                 gvIntegridad.DataSource = resultados;
@@ -109,7 +106,6 @@ public partial class WebMaster : System.Web.UI.Page
         }
     }
 
-    // Boton 1: recalcula los HashVerificador a partir de los datos actuales
     protected void btnRecalcularHashes_Click(object sender, EventArgs e)
     {
         try
@@ -131,7 +127,6 @@ public partial class WebMaster : System.Web.UI.Page
         ActualizarEstadoIntegridad();
     }
 
-    // Boton 2: restaura la BD ejecutando el stored procedure SP_RestaurarBD
     protected void btnRestaurarBD_Click(object sender, EventArgs e)
     {
         try
@@ -160,7 +155,7 @@ public partial class WebMaster : System.Web.UI.Page
         ActualizarEstadoIntegridad();
     }
 
-    // Seccion c: llama al stored procedure SP_HacerBackup
+
     protected void btnBackup_Click(object sender, EventArgs e)
     {
         try
@@ -183,7 +178,6 @@ public partial class WebMaster : System.Web.UI.Page
         }
     }
 
-    // Recalcula y guarda el HashVerificador de todos los productos
     private void RecalcularHashes(SqlConnection con)
     {
         List<int>    ids    = new List<int>();

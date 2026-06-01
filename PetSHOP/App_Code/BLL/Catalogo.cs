@@ -1,4 +1,4 @@
-// Capa de logica de negocio para el catalogo de productos
+
 public static class Catalogo
 {
     // Calcula el hash verificador de un producto a partir de sus datos clave

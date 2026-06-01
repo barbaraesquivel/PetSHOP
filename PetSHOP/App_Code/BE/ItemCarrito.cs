@@ -1,6 +1,6 @@
 using System;
 
-// Representa un producto dentro del carrito de compras
+// producto dentro del carrito de compras
 [Serializable]
 public class ItemCarrito
 {

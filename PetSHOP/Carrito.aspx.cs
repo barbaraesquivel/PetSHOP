@@ -41,8 +41,6 @@ public partial class Carrito : System.Web.UI.Page
         pnlVacio.Visible   = false;
         pnlCarrito.Visible = true;
 
-        // Proyectamos el diccionario a una lista anonima para el GridView
-        // La clave (IdProducto) va como campo para los comandos + - eliminar
         var items = new System.Collections.ArrayList();
         foreach (var kvp in carrito)
         {
@@ -110,8 +108,6 @@ public partial class Carrito : System.Web.UI.Page
             {
                 con.Open();
 
-                // Insertamos el pedido y obtenemos su IdPedido
-                // Columnas reales: IdPedido, IdUsuario, FechaPedido, Total, Estado
                 SqlCommand cmdPedido = new SqlCommand(
                     @"INSERT INTO Pedidos (IdUsuario, FechaPedido, Total, Estado)
                       OUTPUT INSERTED.IdPedido
@@ -120,8 +116,6 @@ public partial class Carrito : System.Web.UI.Page
                 cmdPedido.Parameters.AddWithValue("@total",     total);
                 int idPedido = (int)cmdPedido.ExecuteScalar();
 
-                // Insertamos cada item en DetallePedido
-                // Columnas reales: IdDetalle, IdPedido, NombreProducto, PrecioUnitario, Cantidad, Subtotal
                 foreach (var kvp in carrito)
                 {
                     SqlCommand cmdDetalle = new SqlCommand(

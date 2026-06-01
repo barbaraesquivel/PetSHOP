@@ -20,7 +20,6 @@ public partial class Menu : System.Web.UI.Page
             return;
         }
 
-        // Mostramos links segun el rol
         string rol = Session["Rol"].ToString();
         if (rol == "Admin" || rol == "WebMaster")
             lnkAdmin.Visible = true;
@@ -43,7 +42,7 @@ public partial class Menu : System.Web.UI.Page
             {
                 con.Open();
 
-                // La BD usa IdProducto como clave primaria en Productos
+
                 string sql = "SELECT IdProducto, Nombre, Descripcion, Precio, Categoria FROM Productos WHERE Activo=1 AND Eliminado=0";
                 if (categoria != "")
                     sql += " AND Categoria=@categoria";
@@ -112,7 +111,7 @@ public partial class Menu : System.Web.UI.Page
 
         try
         {
-            // Buscamos el producto en la BD para obtener nombre y precio
+
             using (SqlConnection con = ConexionBD.ObtenerConexion())
             {
                 con.Open();
@@ -127,7 +126,6 @@ public partial class Menu : System.Web.UI.Page
                 decimal precio = (decimal)reader["Precio"];
                 reader.Close();
 
-                // Usamos Dictionary<int, ItemCarrito> con el Id como clave
                 Dictionary<int, ItemCarrito> carrito = ObtenerCarrito();
 
                 if (carrito.ContainsKey(idProducto))

@@ -93,7 +93,7 @@ public partial class Admin : System.Web.UI.Page
         }
     }
 
-    // Vuelve a resaltar la fila seleccionada despues de cada postback (via JS startup)
+    // vuelve a resaltar la fila seleccionada despues de cada postback
     private void ReaplicarSeleccionUsuario()
     {
         int selId;

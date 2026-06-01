@@ -3,12 +3,12 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 
-// Capa de seguridad: hash SHA-256 y encriptacion AES-256
+//hash SHA-256 y encriptacion AES-256
 public static class Encriptacion
 {
     private const string CLAVE_AES = "PetSHOP_AES_Key_32Bytes_Academic";
 
-    // Convierte un texto a su hash SHA-256 en hexadecimal en minusculas
+    // Convierte un texto a su hash SHA-256
     public static string HashSHA256(string texto)
     {
         SHA256 sha = SHA256.Create();
@@ -22,7 +22,7 @@ public static class Encriptacion
         return resultado.ToString();
     }
 
-    // Encripta con AES-256, devuelve Base64 (IV prepended)
+    // Encripta con AES-256
     public static string Encriptar(string texto)
     {
         Aes aes = Aes.Create();
@@ -46,7 +46,7 @@ public static class Encriptacion
         return Convert.ToBase64String(resultado);
     }
 
-    // Desencripta un texto cifrado con Encriptar()
+    // desencripta un texto cifrado con Encriptar
     public static string Desencriptar(string textoCifrado)
     {
         byte[] datos = Convert.FromBase64String(textoCifrado);

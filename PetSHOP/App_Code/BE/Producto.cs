@@ -1,6 +1,5 @@
 using System;
 
-// Entidad que representa un producto del catalogo en la BD
 [Serializable]
 public class Producto
 {

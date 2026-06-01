@@ -9,7 +9,6 @@ public partial class _Default : System.Web.UI.Page
             Response.Redirect("Menu.aspx", false);
     }
 
-    // ===== LOGIN =====
 
     protected void btnIngresar_Click(object sender, EventArgs e)
     {
@@ -29,7 +28,6 @@ public partial class _Default : System.Web.UI.Page
             {
                 con.Open();
 
-                // Columnas reales: IdUsuario, NombreUsuario, Rol (la tabla no tiene Activo)
                 SqlCommand cmd = new SqlCommand(
                     @"SELECT IdUsuario, NombreUsuario, Rol
                       FROM Usuarios
@@ -66,7 +64,7 @@ public partial class _Default : System.Web.UI.Page
         }
     }
 
-    // Muestra el formulario de registro
+
     protected void btnIrRegistro_Click(object sender, EventArgs e)
     {
         lblError.Visible       = false;
@@ -75,7 +73,6 @@ public partial class _Default : System.Web.UI.Page
         lblRegMensaje.Visible  = false;
     }
 
-    // Vuelve al formulario de login
     protected void btnIrLogin_Click(object sender, EventArgs e)
     {
         pnlRegistro.Visible   = false;
@@ -83,7 +80,6 @@ public partial class _Default : System.Web.UI.Page
         lblRegMensaje.Visible = false;
     }
 
-    // ===== REGISTRO =====
 
     protected void btnRegistrar_Click(object sender, EventArgs e)
     {
@@ -91,7 +87,7 @@ public partial class _Default : System.Web.UI.Page
         string pass   = txtRegPass.Text;
         string conf   = txtRegConfirm.Text;
 
-        // Validaciones basicas
+
         if (nombre == "" || pass == "")
         {
             MostrarRegError("El nombre de usuario y la contrasena son obligatorios.");
@@ -116,7 +112,6 @@ public partial class _Default : System.Web.UI.Page
             {
                 con.Open();
 
-                // Verificamos que el nombre no este ya tomado
                 SqlCommand check = new SqlCommand(
                     "SELECT COUNT(1) FROM Usuarios WHERE NombreUsuario=@n", con);
                 check.Parameters.AddWithValue("@n", nombre);
@@ -128,7 +123,6 @@ public partial class _Default : System.Web.UI.Page
                     return;
                 }
 
-                // Insertamos con rol Usuario por defecto
                 string hash = Encriptacion.HashSHA256(pass);
                 SqlCommand cmd = new SqlCommand(
                     "INSERT INTO Usuarios (NombreUsuario, PasswordHash, Rol) VALUES (@n, @h, 'Usuario')", con);
@@ -139,7 +133,6 @@ public partial class _Default : System.Web.UI.Page
 
             Bitacora.Registrar(nombre, "REGISTRO", "Nuevo usuario registrado desde el login");
 
-            // Mostramos mensaje de exito y volvemos al login
             txtRegUsuario.Text = "";
             txtRegPass.Text    = "";
             txtRegConfirm.Text = "";

@@ -1,6 +1,5 @@
 using System;
 
-// Representa un pedido confirmado por un usuario
 [Serializable]
 public class Pedido
 {

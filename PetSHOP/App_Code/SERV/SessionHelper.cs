@@ -1,6 +1,5 @@
 using System.Web.UI;
 
-// Servicio de verificacion de sesion y roles
 public static class SessionHelper
 {
     public static bool VerificarSesion(Page pagina)
@@ -13,7 +12,6 @@ public static class SessionHelper
         return true;
     }
 
-    // Jerarquia: WebMaster > Admin > Usuario
     public static bool VerificarRol(Page pagina, string rolRequerido)
     {
         if (!VerificarSesion(pagina)) return false;

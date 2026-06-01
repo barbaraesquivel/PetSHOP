@@ -1,7 +1,6 @@
 using System.Data.SqlClient;
 using System.Web;
 
-// Servicio de registro de eventos: escribe en la tabla LogBitacora
 public static class Bitacora
 {
     public static void Registrar(string usuario, string accion, string detalle)

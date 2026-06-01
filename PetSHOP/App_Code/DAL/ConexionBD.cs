@@ -4,7 +4,6 @@ using System.Data.SqlClient;
 using System.IO;
 using System.Web;
 
-// Capa de acceso a datos: conexion a la base de datos
 public static class ConexionBD
 {
     private static string ObtenerCadena()
@@ -12,13 +11,12 @@ public static class ConexionBD
         return ConfigurationManager.ConnectionStrings["PetShopDB"].ConnectionString;
     }
 
-    // Devuelve una nueva SqlConnection sin abrir
     public static SqlConnection ObtenerConexion()
     {
         return new SqlConnection(ObtenerCadena());
     }
 
-    // Prueba si se puede conectar a la BD
+    // prueba si se puede conectar a la BD
     public static bool EstaDisponible()
     {
         try
@@ -37,8 +35,7 @@ public static class ConexionBD
         }
     }
 
-    // Escribe directo al archivo sin pasar por Bitacora
-    // (se usa en Application_Start donde HttpContext puede ser null)
+    // escribe directo al archivo sin pasar por bitacora
     private static void RegistrarEnLog(string usuario, string accion, string detalle)
     {
         try

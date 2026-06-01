@@ -12,7 +12,6 @@ public partial class Global : System.Web.HttpApplication
 
         if (disponible)
         {
-            // Inicializamos los HashVerificador de los productos que aun no tienen
             InicializarHashesNulos();
            Bitacora.Registrar("sistema", "APP_START", "Aplicacion iniciada con BD disponible");
         }
@@ -22,12 +21,7 @@ public partial class Global : System.Web.HttpApplication
         }
     }
 
-    // Calcula y guarda el hash SOLO en productos que tienen HashVerificador = NULL.
-    // Si el hash ya existe no lo toca, para que los cambios externos sean detectables.
-    // ATENCION: si el HashVerificador fue borrado manualmente (puesto en NULL) y los
-    // datos ya estaban alterados, este metodo calculara el hash de los datos corruptos,
-    // lo que hara que la verificacion no detecte la alteracion. Usar "Restaurar BD"
-    // para restablecer datos limpios antes de reinicializar.
+
     private void InicializarHashesNulos()
     {
         try
