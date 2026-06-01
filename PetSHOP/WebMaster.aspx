@@ -23,6 +23,7 @@
         .denegado { color: red; font-size: 18px; font-weight: bold; margin: 30px; }
         .panel-corrupto { background: #ffebee; border: 2px solid #cc0000; padding: 15px; margin: 10px 0; border-radius: 4px; }
         .panel-ok       { background: #e8f5e9; border: 2px solid #2e7d32; padding: 10px;  margin: 10px 0; border-radius: 4px; }
+        .panel-error    { background: #fff8e1; border: 2px solid #f57f17; padding: 12px;  margin: 10px 0; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -72,6 +73,25 @@
                     </div>
                 </asp:Panel>
 
+                <!-- Cartel de error en la verificacion (error SQL, columna faltante, etc.) -->
+                <asp:Panel ID="pnlErrorVerificacion" runat="server" Visible="false">
+                    <div class="panel-error">
+                        <strong style="color:#e65100;">&#9888; No se pudo verificar la integridad de la base de datos.</strong><br />
+                        <asp:Label ID="lblErrorVerificacion" runat="server" style="font-size:13px;" /><br /><br />
+                        <small>Posibles causas: la columna <em>HashVerificador</em> no existe en la tabla Productos,
+                        o hay un problema de conexion. Revise la estructura de la BD o use los botones de abajo
+                        para recalcular los digitos verificadores.</small><br /><br />
+                        <asp:Button ID="btnRecalcularHashesErr" runat="server"
+                            Text="Recalcular digitos verificadores"
+                            CssClass="btn" OnClick="btnRecalcularHashes_Click" />
+                        &nbsp;
+                        <asp:Button ID="btnRestaurarBDErr" runat="server"
+                            Text="Restaurar BD desde backup"
+                            CssClass="btn-danger" OnClick="btnRestaurarBD_Click"
+                            OnClientClick="return confirm('Restaurar la BD desde el ultimo backup disponible?')" />
+                    </div>
+                </asp:Panel>
+
                 <!-- Mensaje de operaciones -->
                 <asp:Label ID="lblMensaje" runat="server" CssClass="msg" Visible="false" />
 
@@ -82,19 +102,14 @@
                 <p>El sistema verifica automaticamente al ingresar. Resultados:</p>
 
                 <asp:GridView ID="gvIntegridad" runat="server"
-                    AutoGenerateColumns="false" CssClass="tabla" Visible="false">
+                    AutoGenerateColumns="false" CssClass="tabla" Visible="false"
+                    OnRowDataBound="gvIntegridad_RowDataBound">
                     <Columns>
                         <asp:BoundField DataField="Id"        HeaderText="ID"        ItemStyle-Width="40px" />
                         <asp:BoundField DataField="Nombre"    HeaderText="Producto" />
                         <asp:BoundField DataField="Categoria" HeaderText="Categoria" ItemStyle-Width="90px" />
                         <asp:BoundField DataField="Precio"    HeaderText="Precio"    DataFormatString="${0:N2}" ItemStyle-Width="80px" />
-                        <asp:TemplateField HeaderText="Estado" ItemStyle-Width="90px">
-                            <ItemTemplate>
-                                <asp:Label runat="server"
-                                    Text='<%# Eval("Estado") %>'
-                                    CssClass='<%# Eval("Estado").ToString() == "OK" ? "ok" : "alterado" %>' />
-                            </ItemTemplate>
-                        </asp:TemplateField>
+                        <asp:BoundField DataField="Estado"    HeaderText="Estado"    ItemStyle-Width="90px" />
                     </Columns>
                 </asp:GridView>
 

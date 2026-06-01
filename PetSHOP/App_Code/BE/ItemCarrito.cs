@@ -1,8 +1,6 @@
 using System;
 
 // Representa un producto dentro del carrito de compras
-// El carrito se guarda en Session como Dictionary<int, ItemCarrito>
-// donde la clave (int) es el IdProducto
 [Serializable]
 public class ItemCarrito
 {

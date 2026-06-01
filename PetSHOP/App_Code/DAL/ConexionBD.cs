@@ -4,24 +4,21 @@ using System.Data.SqlClient;
 using System.IO;
 using System.Web;
 
-// Clase para obtener conexiones a la base de datos
-public static class ConexionDB
+// Capa de acceso a datos: conexion a la base de datos
+public static class ConexionBD
 {
-    // Lee la cadena de conexion del Web.config (name="PetShopDB")
     private static string ObtenerCadena()
     {
         return ConfigurationManager.ConnectionStrings["PetShopDB"].ConnectionString;
     }
 
     // Devuelve una nueva SqlConnection sin abrir
-    // Usar siempre con using() para cerrarla automaticamente
     public static SqlConnection ObtenerConexion()
     {
         return new SqlConnection(ObtenerCadena());
     }
 
     // Prueba si se puede conectar a la BD
-    // Devuelve true si esta disponible, false si hubo error
     public static bool EstaDisponible()
     {
         try
@@ -29,20 +26,20 @@ public static class ConexionDB
             using (SqlConnection con = ObtenerConexion())
             {
                 con.Open();
-                RegistrarEnLog("sistema", "DB_OK", "Conexion a la base de datos exitosa", "servidor");
+                RegistrarEnLog("sistema", "DB_OK", "Conexion a la base de datos exitosa");
                 return true;
             }
         }
         catch (Exception ex)
         {
-            RegistrarEnLog("sistema", "DB_ERROR", "No se pudo conectar a la BD: " + ex.Message, "servidor");
+            RegistrarEnLog("sistema", "DB_ERROR", "No se pudo conectar a la BD: " + ex.Message);
             return false;
         }
     }
 
     // Escribe directo al archivo sin pasar por Bitacora
     // (se usa en Application_Start donde HttpContext puede ser null)
-    private static void RegistrarEnLog(string usuario, string accion, string detalle, string ip)
+    private static void RegistrarEnLog(string usuario, string accion, string detalle)
     {
         try
         {
@@ -56,9 +53,9 @@ public static class ConexionDB
                 Directory.CreateDirectory(carpeta);
 
             string linea = "[" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "] | "
-                         + usuario + " | " + accion + " | " + detalle + " | " + ip;
+                         + usuario + " | " + accion + " | " + detalle;
 
-            File.AppendAllText(Path.Combine(carpeta, "bitacora.txt"), linea + Environment.NewLine);
+            System.IO.File.AppendAllText(Path.Combine(carpeta, "bitacora.txt"), linea + Environment.NewLine);
         }
         catch { }
     }

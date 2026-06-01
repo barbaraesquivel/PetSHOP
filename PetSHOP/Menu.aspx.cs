@@ -8,12 +8,12 @@ public partial class Menu : System.Web.UI.Page
 {
     protected void Page_Load(object sender, EventArgs e)
     {
-        if (!SesionHelper.VerificarRol(this, "Usuario")) return;
+        if (!SessionHelper.VerificarRol(this, "Usuario")) return;
 
         lblUsuario.Text    = Session["Usuario"].ToString();
         lblMensaje.Visible = false;
 
-        if (!SesionHelper.VerificarDB(this))
+        if (!SessionHelper.VerificarDB(this))
         {
             pnlDBError.Visible   = true;
             pnlContenido.Visible = false;
@@ -39,12 +39,12 @@ public partial class Menu : System.Web.UI.Page
     {
         try
         {
-            using (SqlConnection con = ConexionDB.ObtenerConexion())
+            using (SqlConnection con = ConexionBD.ObtenerConexion())
             {
                 con.Open();
 
                 // La BD usa IdProducto como clave primaria en Productos
-                string sql = "SELECT IdProducto, Nombre, Descripcion, Precio, Categoria FROM Productos WHERE Activo=1";
+                string sql = "SELECT IdProducto, Nombre, Descripcion, Precio, Categoria FROM Productos WHERE Activo=1 AND Eliminado=0";
                 if (categoria != "")
                     sql += " AND Categoria=@categoria";
                 sql += " ORDER BY Nombre";
@@ -113,11 +113,11 @@ public partial class Menu : System.Web.UI.Page
         try
         {
             // Buscamos el producto en la BD para obtener nombre y precio
-            using (SqlConnection con = ConexionDB.ObtenerConexion())
+            using (SqlConnection con = ConexionBD.ObtenerConexion())
             {
                 con.Open();
                 SqlCommand cmd = new SqlCommand(
-                    "SELECT Nombre, Precio FROM Productos WHERE IdProducto=@id AND Activo=1", con);
+                    "SELECT Nombre, Precio FROM Productos WHERE IdProducto=@id AND Activo=1 AND Eliminado=0", con);
                 cmd.Parameters.AddWithValue("@id", idProducto);
                 SqlDataReader reader = cmd.ExecuteReader();
 

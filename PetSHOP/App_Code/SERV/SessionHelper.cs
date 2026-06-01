@@ -1,8 +1,8 @@
 using System.Web.UI;
 
-public static class SesionHelper
+// Servicio de verificacion de sesion y roles
+public static class SessionHelper
 {
-    // Verifica que haya sesion activa; si no, redirige al login
     public static bool VerificarSesion(Page pagina)
     {
         if (pagina.Session["Usuario"] == null)
@@ -13,7 +13,6 @@ public static class SesionHelper
         return true;
     }
 
-    // Verifica que el usuario tenga el nivel de rol requerido
     // Jerarquia: WebMaster > Admin > Usuario
     public static bool VerificarRol(Page pagina, string rolRequerido)
     {
@@ -21,20 +20,13 @@ public static class SesionHelper
 
         string rolActual = pagina.Session["Rol"].ToString();
 
-        if (rolRequerido == "Usuario")
-            return true;
-
-        if (rolRequerido == "Admin")
-            return rolActual == "Admin" || rolActual == "WebMaster";
-
-        if (rolRequerido == "WebMaster")
-            return rolActual == "WebMaster";
+        if (rolRequerido == "Usuario")  return true;
+        if (rolRequerido == "Admin")    return rolActual == "Admin" || rolActual == "WebMaster";
+        if (rolRequerido == "WebMaster") return rolActual == "WebMaster";
 
         return false;
     }
 
-    // Verifica que la BD este disponible segun el flag en Application
-    // Devuelve false si Application["DBDisponible"] es false
     public static bool VerificarDB(Page pagina)
     {
         if (pagina.Application["DBDisponible"] != null && !(bool)pagina.Application["DBDisponible"])

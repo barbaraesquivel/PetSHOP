@@ -14,7 +14,7 @@ public partial class _Default : System.Web.UI.Page
     protected void btnIngresar_Click(object sender, EventArgs e)
     {
         string usuario        = txtUsuario.Text.Trim().ToLower();
-        string claveIngresada = Seguridad.HashSHA256(txtContrasena.Text);
+        string claveIngresada = Encriptacion.HashSHA256(txtContrasena.Text);
 
         if (Application["DBDisponible"] != null && !(bool)Application["DBDisponible"])
         {
@@ -25,7 +25,7 @@ public partial class _Default : System.Web.UI.Page
 
         try
         {
-            using (SqlConnection con = ConexionDB.ObtenerConexion())
+            using (SqlConnection con = ConexionBD.ObtenerConexion())
             {
                 con.Open();
 
@@ -112,7 +112,7 @@ public partial class _Default : System.Web.UI.Page
 
         try
         {
-            using (SqlConnection con = ConexionDB.ObtenerConexion())
+            using (SqlConnection con = ConexionBD.ObtenerConexion())
             {
                 con.Open();
 
@@ -129,7 +129,7 @@ public partial class _Default : System.Web.UI.Page
                 }
 
                 // Insertamos con rol Usuario por defecto
-                string hash = Seguridad.HashSHA256(pass);
+                string hash = Encriptacion.HashSHA256(pass);
                 SqlCommand cmd = new SqlCommand(
                     "INSERT INTO Usuarios (NombreUsuario, PasswordHash, Rol) VALUES (@n, @h, 'Usuario')", con);
                 cmd.Parameters.AddWithValue("@n", nombre);

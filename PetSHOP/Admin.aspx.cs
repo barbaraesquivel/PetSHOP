@@ -7,7 +7,7 @@ public partial class Admin : System.Web.UI.Page
 {
     protected void Page_Load(object sender, EventArgs e)
     {
-        if (!SesionHelper.VerificarSesion(this)) return;
+        if (!SessionHelper.VerificarSesion(this)) return;
 
         string rol = Session["Rol"].ToString();
 
@@ -18,7 +18,7 @@ public partial class Admin : System.Web.UI.Page
             return;
         }
 
-        if (!SesionHelper.VerificarDB(this))
+        if (!SessionHelper.VerificarDB(this))
         {
             pnlDenegado.Visible  = true;
             pnlContenido.Visible = false;
@@ -53,7 +53,7 @@ public partial class Admin : System.Web.UI.Page
     {
         try
         {
-            using (SqlConnection con = ConexionDB.ObtenerConexion())
+            using (SqlConnection con = ConexionBD.ObtenerConexion())
             {
                 con.Open();
                 SqlDataAdapter da = new SqlDataAdapter(
@@ -75,7 +75,7 @@ public partial class Admin : System.Web.UI.Page
     {
         try
         {
-            using (SqlConnection con = ConexionDB.ObtenerConexion())
+            using (SqlConnection con = ConexionBD.ObtenerConexion())
             {
                 con.Open();
                 SqlDataAdapter da = new SqlDataAdapter(
@@ -93,7 +93,7 @@ public partial class Admin : System.Web.UI.Page
         }
     }
 
-    // Mantiene la fila seleccionada resaltada despues de cada rebind
+    // Vuelve a resaltar la fila seleccionada despues de cada postback (via JS startup)
     private void ReaplicarSeleccionUsuario()
     {
         int selId;
@@ -102,7 +102,9 @@ public partial class Admin : System.Web.UI.Page
         {
             if ((int)gvUsuarios.DataKeys[i].Value == selId)
             {
-                gvUsuarios.SelectedIndex = i;
+                string rowClientId = gvUsuarios.Rows[i].ClientID;
+                Page.ClientScript.RegisterStartupScript(GetType(), "reselUser",
+                    "var r=document.getElementById('" + rowClientId + "'); if(r) r.classList.add('fila-seleccionada');", true);
                 break;
             }
         }
@@ -116,19 +118,21 @@ public partial class Admin : System.Web.UI.Page
         {
             if ((int)gvProductos.DataKeys[i].Value == selId)
             {
-                gvProductos.SelectedIndex = i;
+                string rowClientId = gvProductos.Rows[i].ClientID;
+                Page.ClientScript.RegisterStartupScript(GetType(), "reselProd",
+                    "var r=document.getElementById('" + rowClientId + "'); if(r) r.classList.add('fila-seleccionada');", true);
                 break;
             }
         }
     }
 
-    // Hace las filas clickeables para seleccionarlas
+    // Hace las filas clickeables: JS puro actualiza el HiddenField sin postback
     protected void gvUsuarios_RowDataBound(object sender, GridViewRowEventArgs e)
     {
         if (e.Row.RowType == DataControlRowType.DataRow)
         {
-            e.Row.Attributes["onclick"] =
-                Page.ClientScript.GetPostBackClientHyperlink(gvUsuarios, "Select$" + e.Row.RowIndex);
+            string id = gvUsuarios.DataKeys[e.Row.RowIndex].Value.ToString();
+            e.Row.Attributes["onclick"] = "seleccionarFila(this,'" + id + "','hfSelectedUserId')";
             e.Row.Style["cursor"] = "pointer";
             e.Row.ToolTip = "Clic para seleccionar";
         }
@@ -138,24 +142,11 @@ public partial class Admin : System.Web.UI.Page
     {
         if (e.Row.RowType == DataControlRowType.DataRow)
         {
-            e.Row.Attributes["onclick"] =
-                Page.ClientScript.GetPostBackClientHyperlink(gvProductos, "Select$" + e.Row.RowIndex);
+            string id = gvProductos.DataKeys[e.Row.RowIndex].Value.ToString();
+            e.Row.Attributes["onclick"] = "seleccionarFila(this,'" + id + "','hfSelectedProdId')";
             e.Row.Style["cursor"] = "pointer";
             e.Row.ToolTip = "Clic para seleccionar";
         }
-    }
-
-    // Guarda el ID seleccionado en el HiddenField para que persista entre postbacks
-    protected void gvUsuarios_SelectedIndexChanged(object sender, EventArgs e)
-    {
-        if (gvUsuarios.SelectedDataKey != null)
-            hfSelectedUserId.Value = gvUsuarios.SelectedDataKey.Value.ToString();
-    }
-
-    protected void gvProductos_SelectedIndexChanged(object sender, EventArgs e)
-    {
-        if (gvProductos.SelectedDataKey != null)
-            hfSelectedProdId.Value = gvProductos.SelectedDataKey.Value.ToString();
     }
 
     // ===== ACCIONES USUARIOS =====
@@ -174,8 +165,8 @@ public partial class Admin : System.Web.UI.Page
 
         try
         {
-            string hash = Seguridad.HashSHA256(pass);
-            using (SqlConnection con = ConexionDB.ObtenerConexion())
+            string hash = Encriptacion.HashSHA256(pass);
+            using (SqlConnection con = ConexionBD.ObtenerConexion())
             {
                 con.Open();
                 SqlCommand cmd = new SqlCommand(
@@ -208,7 +199,7 @@ public partial class Admin : System.Web.UI.Page
 
         try
         {
-            using (SqlConnection con = ConexionDB.ObtenerConexion())
+            using (SqlConnection con = ConexionBD.ObtenerConexion())
             {
                 con.Open();
                 SqlCommand cmd = new SqlCommand(
@@ -252,7 +243,7 @@ public partial class Admin : System.Web.UI.Page
         try
         {
             string nombre = "";
-            using (SqlConnection con = ConexionDB.ObtenerConexion())
+            using (SqlConnection con = ConexionBD.ObtenerConexion())
             {
                 con.Open();
                 SqlCommand cmdGet = new SqlCommand(
@@ -287,7 +278,7 @@ public partial class Admin : System.Web.UI.Page
 
         try
         {
-            using (SqlConnection con = ConexionDB.ObtenerConexion())
+            using (SqlConnection con = ConexionBD.ObtenerConexion())
             {
                 con.Open();
                 SqlCommand cmd = new SqlCommand(
@@ -331,8 +322,8 @@ public partial class Admin : System.Web.UI.Page
 
         try
         {
-            string hash = Seguridad.HashSHA256(nombre + precio.ToString("N2") + categoria);
-            using (SqlConnection con = ConexionDB.ObtenerConexion())
+            string hash = Encriptacion.HashSHA256(nombre + precio.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + categoria);
+            using (SqlConnection con = ConexionBD.ObtenerConexion())
             {
                 con.Open();
                 SqlCommand cmd = new SqlCommand(
@@ -369,7 +360,7 @@ public partial class Admin : System.Web.UI.Page
 
         try
         {
-            using (SqlConnection con = ConexionDB.ObtenerConexion())
+            using (SqlConnection con = ConexionBD.ObtenerConexion())
             {
                 con.Open();
                 SqlCommand cmd = new SqlCommand(
@@ -410,7 +401,7 @@ public partial class Admin : System.Web.UI.Page
         try
         {
             string nombreProd = "";
-            using (SqlConnection con = ConexionDB.ObtenerConexion())
+            using (SqlConnection con = ConexionBD.ObtenerConexion())
             {
                 con.Open();
                 SqlCommand cmdGet = new SqlCommand(
@@ -418,17 +409,11 @@ public partial class Admin : System.Web.UI.Page
                 cmdGet.Parameters.AddWithValue("@id", id);
                 nombreProd = (string)cmdGet.ExecuteScalar();
 
+                // Baja logica: Activo=0 y Eliminado=1 (sin tabla Eliminados)
                 SqlCommand cmdUpd = new SqlCommand(
-                    "UPDATE Productos SET Activo=0 WHERE IdProducto=@id", con);
+                    "UPDATE Productos SET Activo=0, Eliminado=1 WHERE IdProducto=@id", con);
                 cmdUpd.Parameters.AddWithValue("@id", id);
                 cmdUpd.ExecuteNonQuery();
-
-                SqlCommand cmdElim = new SqlCommand(
-                    @"INSERT INTO Eliminados (Tipo, Descripcion, RealizadoPor, FechaHora, EsExterno)
-                      VALUES ('Producto', @desc, @usuario, GETDATE(), 0)", con);
-                cmdElim.Parameters.AddWithValue("@desc",    "Producto desactivado: " + nombreProd + " (Id=" + id + ")");
-                cmdElim.Parameters.AddWithValue("@usuario", Session["Usuario"].ToString());
-                cmdElim.ExecuteNonQuery();
             }
 
             hfSelectedProdId.Value = "0";
@@ -460,8 +445,8 @@ public partial class Admin : System.Web.UI.Page
 
         try
         {
-            string hash = Seguridad.HashSHA256(nombre + precio.ToString("N2") + categoria);
-            using (SqlConnection con = ConexionDB.ObtenerConexion())
+            string hash = Encriptacion.HashSHA256(nombre + precio.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + categoria);
+            using (SqlConnection con = ConexionBD.ObtenerConexion())
             {
                 con.Open();
                 SqlCommand cmd = new SqlCommand(
@@ -498,7 +483,7 @@ public partial class Admin : System.Web.UI.Page
     {
         try
         {
-            using (SqlConnection con = ConexionDB.ObtenerConexion())
+            using (SqlConnection con = ConexionBD.ObtenerConexion())
             {
                 con.Open();
                 string sql = "SELECT FechaHora, NombreUsuario, Accion, Detalle FROM LogBitacora";

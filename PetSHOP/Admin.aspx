@@ -28,8 +28,23 @@
         .inactivo { color: #cc0000; }
         .activo   { color: #2e7d32; }
         .hint-seleccion { font-size: 12px; color: #777; margin: 4px 0 0 0; }
+        .fila-seleccionada { background-color: #cce5ff !important; font-weight: bold; }
         input[type=text], input[type=password], select { padding: 4px; border: 1px solid #aaa; }
     </style>
+    <script type="text/javascript">
+        function seleccionarFila(fila, id, hfId) {
+            // Quitar seleccion anterior en la misma grilla
+            var grilla = fila.parentNode;
+            while (grilla && grilla.tagName !== 'TABLE') grilla = grilla.parentNode;
+            if (grilla) {
+                var filas = grilla.querySelectorAll('tr');
+                for (var i = 0; i < filas.length; i++)
+                    filas[i].classList.remove('fila-seleccionada');
+            }
+            fila.classList.add('fila-seleccionada');
+            document.getElementById(hfId).value = id;
+        }
+    </script>
 </head>
 <body>
     <form id="form1" runat="server">
@@ -122,9 +137,7 @@
                 <asp:GridView ID="gvUsuarios" runat="server"
                     AutoGenerateColumns="false" CssClass="tabla"
                     DataKeyNames="IdUsuario"
-                    OnSelectedIndexChanged="gvUsuarios_SelectedIndexChanged"
                     OnRowDataBound="gvUsuarios_RowDataBound">
-                    <SelectedRowStyle BackColor="#cce5ff" Font-Bold="true" />
                     <Columns>
                         <asp:BoundField DataField="IdUsuario"     HeaderText="ID"      ItemStyle-Width="40px" />
                         <asp:BoundField DataField="NombreUsuario" HeaderText="Usuario" ItemStyle-Width="150px" />
@@ -220,9 +233,7 @@
                 <asp:GridView ID="gvProductos" runat="server"
                     AutoGenerateColumns="false" CssClass="tabla"
                     DataKeyNames="IdProducto"
-                    OnSelectedIndexChanged="gvProductos_SelectedIndexChanged"
                     OnRowDataBound="gvProductos_RowDataBound">
-                    <SelectedRowStyle BackColor="#cce5ff" Font-Bold="true" />
                     <Columns>
                         <asp:BoundField DataField="IdProducto"  HeaderText="ID"          ItemStyle-Width="40px" />
                         <asp:BoundField DataField="Nombre"      HeaderText="Nombre"       ItemStyle-Width="160px" />

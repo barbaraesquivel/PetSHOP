@@ -7,7 +7,7 @@ public partial class Global : System.Web.HttpApplication
 {
     protected void Application_Start(object sender, EventArgs e)
     {
-        bool disponible = ConexionDB.EstaDisponible();
+        bool disponible = ConexionBD.EstaDisponible();
         Application["DBDisponible"] = disponible;
 
         if (disponible)
@@ -22,9 +22,12 @@ public partial class Global : System.Web.HttpApplication
         }
     }
 
-    // Solo calcula y guarda el hash en productos que tienen HashVerificador = NULL
-    // Si el hash ya existe (fue puesto por el Admin), no lo tocamos
-    // Esto es importante para que la deteccion de cambios externos funcione correctamente
+    // Calcula y guarda el hash SOLO en productos que tienen HashVerificador = NULL.
+    // Si el hash ya existe no lo toca, para que los cambios externos sean detectables.
+    // ATENCION: si el HashVerificador fue borrado manualmente (puesto en NULL) y los
+    // datos ya estaban alterados, este metodo calculara el hash de los datos corruptos,
+    // lo que hara que la verificacion no detecte la alteracion. Usar "Restaurar BD"
+    // para restablecer datos limpios antes de reinicializar.
     private void InicializarHashesNulos()
     {
         try
@@ -32,7 +35,7 @@ public partial class Global : System.Web.HttpApplication
             List<int>    ids    = new List<int>();
             List<string> hashes = new List<string>();
 
-            using (SqlConnection con = ConexionDB.ObtenerConexion())
+            using (SqlConnection con = ConexionBD.ObtenerConexion())
             {
                 con.Open();
 
@@ -42,22 +45,27 @@ public partial class Global : System.Web.HttpApplication
 
                 while (reader.Read())
                 {
-                    string  nombre   = reader["Nombre"].ToString();
-                    decimal precio   = (decimal)reader["Precio"];
+                    string  nombre    = reader["Nombre"].ToString();
+                    decimal precio    = (decimal)reader["Precio"];
                     string  categoria = reader["Categoria"].ToString();
-                    string  hash     = Seguridad.HashSHA256(nombre + precio.ToString("N2") + categoria);
+                    string  hash      = Encriptacion.HashSHA256(nombre + precio.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + categoria);
                     ids.Add((int)reader["IdProducto"]);
                     hashes.Add(hash);
                 }
                 reader.Close();
 
-                for (int i = 0; i < ids.Count; i++)
+                if (ids.Count > 0)
                 {
-                    SqlCommand upd = new SqlCommand(
-                        "UPDATE Productos SET HashVerificador=@hash WHERE IdProducto=@id", con);
-                    upd.Parameters.AddWithValue("@hash", hashes[i]);
-                    upd.Parameters.AddWithValue("@id",   ids[i]);
-                    upd.ExecuteNonQuery();
+                    for (int i = 0; i < ids.Count; i++)
+                    {
+                        SqlCommand upd = new SqlCommand(
+                            "UPDATE Productos SET HashVerificador=@hash WHERE IdProducto=@id", con);
+                        upd.Parameters.AddWithValue("@hash", hashes[i]);
+                        upd.Parameters.AddWithValue("@id",   ids[i]);
+                        upd.ExecuteNonQuery();
+                    }
+                    Bitacora.Registrar("sistema", "INIT_HASHES",
+                        ids.Count + " producto(s) inicializados con HashVerificador desde datos actuales");
                 }
             }
         }

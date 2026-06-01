@@ -7,16 +7,16 @@ public partial class WebMaster : System.Web.UI.Page
 {
     protected void Page_Load(object sender, EventArgs e)
     {
-        if (!SesionHelper.VerificarSesion(this)) return;
+        if (!SessionHelper.VerificarSesion(this)) return;
 
-        if (!SesionHelper.VerificarRol(this, "WebMaster"))
+        if (!SessionHelper.VerificarRol(this, "WebMaster"))
         {
             pnlDenegado.Visible  = true;
             pnlContenido.Visible = false;
             return;
         }
 
-        if (!SesionHelper.VerificarDB(this))
+        if (!SessionHelper.VerificarDB(this))
         {
             pnlDenegado.Visible  = true;
             pnlContenido.Visible = false;
@@ -37,12 +37,18 @@ public partial class WebMaster : System.Web.UI.Page
     // Verifica todos los hashes y actualiza los paneles de estado
     private void ActualizarEstadoIntegridad()
     {
+        // Resetear los tres paneles antes de verificar para evitar que ViewState
+        // muestre un estado obsoleto si el chequeo falla a mitad de camino
+        pnlCorrupto.Visible         = false;
+        pnlEstadoOK.Visible         = false;
+        pnlErrorVerificacion.Visible = false;
+
         try
         {
             List<ResultadoIntegridad> resultados = new List<ResultadoIntegridad>();
             bool hayCorrupcion = false;
 
-            using (SqlConnection con = ConexionDB.ObtenerConexion())
+            using (SqlConnection con = ConexionBD.ObtenerConexion())
             {
                 con.Open();
                 SqlCommand cmd = new SqlCommand(
@@ -55,35 +61,51 @@ public partial class WebMaster : System.Web.UI.Page
                     decimal precio       = (decimal)reader["Precio"];
                     string  categoria    = reader["Categoria"].ToString();
                     string  hashGuardado = reader["HashVerificador"] == DBNull.Value ? "" : reader["HashVerificador"].ToString();
-                    string  hashActual   = Seguridad.HashSHA256(nombre + precio.ToString("N2") + categoria);
+                    string  hashActual   = Encriptacion.HashSHA256(nombre + precio.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + categoria);
                     bool    ok           = (hashActual == hashGuardado);
 
                     if (!ok) hayCorrupcion = true;
 
                     ResultadoIntegridad res = new ResultadoIntegridad();
-                    res.Id             = reader["IdProducto"].ToString();
-                    res.Nombre         = nombre;
-                    res.Categoria      = categoria;
-                    res.Precio         = precio;
+                    res.Id              = reader["IdProducto"].ToString();
+                    res.Nombre          = nombre;
+                    res.Categoria       = categoria;
+                    res.Precio          = precio;
                     res.HashRecalculado = hashActual;
-                    res.HashGuardado   = hashGuardado;
-                    res.Estado         = ok ? "OK" : "ALTERADO";
-                    res.Info           = ok ? "Sin cambios" : "Modificacion externa detectada";
+                    res.HashGuardado    = hashGuardado;
+                    res.Estado          = ok ? "OK" : "ALTERADO";
+                    res.Info            = ok ? "Sin cambios" : "Modificacion externa detectada";
                     resultados.Add(res);
                 }
                 reader.Close();
             }
 
-            gvIntegridad.DataSource = resultados;
-            gvIntegridad.DataBind();
-            gvIntegridad.Visible = (resultados.Count > 0);
-
+            // Asignar paneles ANTES del DataBind para que queden correctos
+            // aunque el grid falle al renderizar
             pnlCorrupto.Visible = hayCorrupcion;
             pnlEstadoOK.Visible = !hayCorrupcion;
+
+            if (hayCorrupcion)
+                Bitacora.Registrar(Session["Usuario"].ToString(), "INTEGRIDAD_ALERTA",
+                    "Se detectaron productos con hashVerificador no coincidente");
+
+            // Binding del grid en bloque separado: un fallo aqui no afecta los paneles
+            try
+            {
+                gvIntegridad.DataSource = resultados;
+                gvIntegridad.DataBind();
+                gvIntegridad.Visible = (resultados.Count > 0);
+            }
+            catch
+            {
+                gvIntegridad.Visible = false;
+            }
         }
         catch (Exception ex)
         {
-            MostrarMsg("Error al verificar integridad: " + ex.Message, true);
+            lblErrorVerificacion.Text    = "No se pudo verificar la integridad: " + ex.Message;
+            pnlErrorVerificacion.Visible = true;
+            Bitacora.Registrar(Session["Usuario"].ToString(), "ERROR_INTEGRIDAD", ex.Message);
         }
     }
 
@@ -92,7 +114,7 @@ public partial class WebMaster : System.Web.UI.Page
     {
         try
         {
-            using (SqlConnection con = ConexionDB.ObtenerConexion())
+            using (SqlConnection con = ConexionBD.ObtenerConexion())
             {
                 con.Open();
                 RecalcularHashes(con);
@@ -114,7 +136,7 @@ public partial class WebMaster : System.Web.UI.Page
     {
         try
         {
-            using (SqlConnection con = ConexionDB.ObtenerConexion())
+            using (SqlConnection con = ConexionBD.ObtenerConexion())
             {
                 con.Open();
 
@@ -143,7 +165,7 @@ public partial class WebMaster : System.Web.UI.Page
     {
         try
         {
-            using (SqlConnection con = ConexionDB.ObtenerConexion())
+            using (SqlConnection con = ConexionBD.ObtenerConexion())
             {
                 con.Open();
                 SqlCommand cmd = new SqlCommand("SP_HacerBackup", con);
@@ -172,9 +194,9 @@ public partial class WebMaster : System.Web.UI.Page
         while (reader.Read())
         {
             ids.Add((int)reader["IdProducto"]);
-            hashes.Add(Seguridad.HashSHA256(
+            hashes.Add(Encriptacion.HashSHA256(
                 reader["Nombre"].ToString() +
-                ((decimal)reader["Precio"]).ToString("N2") +
+                ((decimal)reader["Precio"]).ToString("F2", System.Globalization.CultureInfo.InvariantCulture) +
                 reader["Categoria"].ToString()));
         }
         reader.Close();
@@ -187,6 +209,16 @@ public partial class WebMaster : System.Web.UI.Page
             upd.Parameters.AddWithValue("@id",   ids[i]);
             upd.ExecuteNonQuery();
         }
+    }
+
+    protected void gvIntegridad_RowDataBound(object sender, System.Web.UI.WebControls.GridViewRowEventArgs e)
+    {
+        if (e.Row.RowType != System.Web.UI.WebControls.DataControlRowType.DataRow) return;
+        ResultadoIntegridad res = (ResultadoIntegridad)e.Row.DataItem;
+        if (res != null && res.Estado == "ALTERADO")
+            e.Row.Cells[4].CssClass = "alterado";
+        else
+            e.Row.Cells[4].CssClass = "ok";
     }
 
     private void MostrarMsg(string texto, bool esError)

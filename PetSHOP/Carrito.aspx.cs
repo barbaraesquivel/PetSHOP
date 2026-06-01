@@ -7,9 +7,9 @@ public partial class Carrito : System.Web.UI.Page
 {
     protected void Page_Load(object sender, EventArgs e)
     {
-        if (!SesionHelper.VerificarRol(this, "Usuario")) return;
+        if (!SessionHelper.VerificarRol(this, "Usuario")) return;
 
-        if (!SesionHelper.VerificarDB(this))
+        if (!SessionHelper.VerificarDB(this))
         {
             pnlDBError.Visible = true;
             pnlVacio.Visible   = false;
@@ -106,7 +106,7 @@ public partial class Carrito : System.Web.UI.Page
 
         try
         {
-            using (SqlConnection con = ConexionDB.ObtenerConexion())
+            using (SqlConnection con = ConexionBD.ObtenerConexion())
             {
                 con.Open();
 
