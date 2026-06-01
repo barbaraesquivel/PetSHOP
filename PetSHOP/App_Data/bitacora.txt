@@ -1,0 +1,1 @@
+[2026-05-31 22:05:11] | sistema | DB_OK | Conexion a la base de datos exitosa | servidor
