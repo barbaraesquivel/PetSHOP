@@ -6,7 +6,7 @@ namespace BE
     public class Pedido
     {
         public int      Id            { get; set; }
-        public string   Usuario       { get; set; }
+        public int      IdCliente     { get; set; }
         public string   Detalle       { get; set; }
         public decimal  Total         { get; set; }
         public string   Estado        { get; set; }

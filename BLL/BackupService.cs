@@ -31,10 +31,10 @@ namespace BLL
         private const int MAX_BACKUPS = 7;
 
         private static readonly string[] OrdenDelete =
-            { "LogBitacora", "DetallePedido", "Pedidos", "Productos", "Usuarios" };
+            { "LogBitacora", "DetallePedido", "Pedidos", "Clientes", "Productos", "Usuarios" };
 
         private static readonly string[] OrdenInsert =
-            { "Usuarios", "Productos", "Pedidos", "DetallePedido", "LogBitacora" };
+            { "Usuarios", "Clientes", "Productos", "Pedidos", "DetallePedido", "LogBitacora" };
 
         // ----------------------------------------------------------------
         // Generacion

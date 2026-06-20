@@ -56,8 +56,7 @@ public partial class Menu : System.Web.UI.Page
             {
                 con.Open();
 
-
-                string sql = "SELECT IdProducto, Nombre, Descripcion, Precio, Categoria FROM Productos WHERE Activo=1 AND Eliminado=0";
+                string sql = "SELECT IdProducto, Nombre, Descripcion, Precio, Categoria, Stock FROM Productos WHERE Activo=1 AND Eliminado=0";
                 if (categoria != "")
                     sql += " AND Categoria=@categoria";
                 sql += " ORDER BY Nombre";
@@ -125,12 +124,11 @@ public partial class Menu : System.Web.UI.Page
 
         try
         {
-
             using (SqlConnection con = ConexionBD.ObtenerConexion())
             {
                 con.Open();
                 SqlCommand cmd = new SqlCommand(
-                    "SELECT Nombre, Precio FROM Productos WHERE IdProducto=@id AND Activo=1 AND Eliminado=0", con);
+                    "SELECT Nombre, Precio, Stock FROM Productos WHERE IdProducto=@id AND Activo=1 AND Eliminado=0", con);
                 cmd.Parameters.AddWithValue("@id", idProducto);
                 SqlDataReader reader = cmd.ExecuteReader();
 
@@ -138,9 +136,22 @@ public partial class Menu : System.Web.UI.Page
 
                 string  nombre = reader["Nombre"].ToString();
                 decimal precio = (decimal)reader["Precio"];
+                int     stock  = (int)reader["Stock"];
                 reader.Close();
 
                 Dictionary<int, ItemCarrito> carrito = ObtenerCarrito();
+                int cantidadActual = carrito.ContainsKey(idProducto) ? carrito[idProducto].Cantidad : 0;
+
+                if (stock <= cantidadActual)
+                {
+                    lblMensaje.Text    = "Stock insuficiente para '" + nombre + "'. Disponible: " + stock + ", ya en carrito: " + cantidadActual + ".";
+                    lblMensaje.CssClass = "mensaje-error";
+                    lblMensaje.Visible = true;
+                    string catActual = Session["CategoriaFiltro"] != null ? Session["CategoriaFiltro"].ToString() : "";
+                    CargarProductos(catActual);
+                    ActualizarContadorCarrito();
+                    return;
+                }
 
                 if (carrito.ContainsKey(idProducto))
                     carrito[idProducto].Cantidad++;
@@ -149,6 +160,7 @@ public partial class Menu : System.Web.UI.Page
 
                 Session["Carrito"] = carrito;
                 lblMensaje.Text    = "Se agrego '" + nombre + "' al carrito.";
+                lblMensaje.CssClass = "mensaje-ok";
                 lblMensaje.Visible = true;
                 ActualizarContadorCarrito();
             }
@@ -156,6 +168,7 @@ public partial class Menu : System.Web.UI.Page
         catch (Exception ex)
         {
             lblMensaje.Text    = "Error al agregar: " + ex.Message;
+            lblMensaje.CssClass = "mensaje-error";
             lblMensaje.Visible = true;
         }
     }

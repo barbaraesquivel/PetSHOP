@@ -179,13 +179,16 @@
                             </td>
                         </tr>
                         <tr>
-                            <td colspan="6" style="padding-top:8px; border-top:1px solid #ddd;">
+                            <td colspan="7" style="padding-top:8px; border-top:1px solid #ddd;">
                                 <asp:Button ID="btnEditarProducto" runat="server" Text="Editar seleccionado"
                                     CssClass="btn-editar" OnClick="btnEditarProducto_Click" />
                                 &nbsp;
                                 <asp:Button ID="btnEliminarProducto" runat="server" Text="Desactivar seleccionado"
                                     CssClass="btn-danger" OnClick="btnEliminarProducto_Click"
                                     OnClientClick="return confirm('Desactivar el producto seleccionado?')" />
+                                &nbsp;
+                                <asp:Button ID="btnGestionarStock" runat="server" Text="Gestionar stock"
+                                    CssClass="btn" OnClick="btnGestionarStock_Click" />
                             </td>
                         </tr>
                     </table>
@@ -227,7 +230,40 @@
                     </table>
                 </asp:Panel>
 
-                <p class="hint-seleccion">&#8593; Haga clic en una fila para seleccionarla, luego use Editar o Desactivar.</p>
+                <!-- Panel actualizar stock del producto seleccionado -->
+                <asp:Panel ID="pnlActualizarStock" runat="server" Visible="false" CssClass="panel-form">
+                    <asp:HiddenField ID="hfIdStockEdit" runat="server" />
+                    <b>Gestionar stock - Producto: </b><asp:Label ID="lblNombreStock" runat="server" /><br /><br />
+                    <table class="form-inline">
+                        <tr>
+                            <td>Stock actual:</td>
+                            <td><asp:Label ID="lblStockActual" runat="server" style="font-weight:bold;" /></td>
+                            <td style="padding-left:20px;">Nuevo stock:</td>
+                            <td><asp:TextBox ID="txtNuevoStock" runat="server" MaxLength="6" Width="70px" /></td>
+                            <td>
+                                <asp:Button ID="btnActualizarStock"  runat="server" Text="Guardar stock" CssClass="btn-agregar" OnClick="btnActualizarStock_Click" />
+                                &nbsp;
+                                <asp:Button ID="btnCancelarStock" runat="server" Text="Cancelar" CssClass="btn" OnClick="btnCancelarStock_Click" />
+                            </td>
+                        </tr>
+                    </table>
+                </asp:Panel>
+
+                <p class="hint-seleccion">&#8593; Haga clic en una fila para seleccionarla, luego use Editar, Desactivar o Gestionar stock.</p>
+
+                <!-- Alerta productos con stock critico -->
+                <asp:Panel ID="pnlAlertaStock" runat="server" Visible="false"
+                    style="background:#fff3e0; border:1px solid #ff9800; padding:8px; margin:6px 0;">
+                    <b style="color:#e65100;">Alerta: productos con stock critico (5 o menos unidades)</b>
+                    <asp:GridView ID="gvAlertaStock" runat="server"
+                        AutoGenerateColumns="false" CssClass="tabla" style="margin-top:6px;">
+                        <Columns>
+                            <asp:BoundField DataField="IdProducto" HeaderText="ID"       ItemStyle-Width="40px" />
+                            <asp:BoundField DataField="Nombre"     HeaderText="Producto"  ItemStyle-Width="200px" />
+                            <asp:BoundField DataField="Stock"      HeaderText="Stock"     ItemStyle-Width="60px" />
+                        </Columns>
+                    </asp:GridView>
+                </asp:Panel>
 
                 <!-- Grilla de productos — sin columna Acciones, filas clickeables -->
                 <asp:GridView ID="gvProductos" runat="server"
@@ -236,10 +272,11 @@
                     OnRowDataBound="gvProductos_RowDataBound">
                     <Columns>
                         <asp:BoundField DataField="IdProducto"  HeaderText="ID"          ItemStyle-Width="40px" />
-                        <asp:BoundField DataField="Nombre"      HeaderText="Nombre"       ItemStyle-Width="160px" />
+                        <asp:BoundField DataField="Nombre"      HeaderText="Nombre"       ItemStyle-Width="150px" />
                         <asp:BoundField DataField="Descripcion" HeaderText="Descripcion" />
-                        <asp:BoundField DataField="Precio"      HeaderText="Precio"       DataFormatString="${0:N2}" ItemStyle-Width="80px" />
-                        <asp:BoundField DataField="Categoria"   HeaderText="Categoria"    ItemStyle-Width="90px" />
+                        <asp:BoundField DataField="Precio"      HeaderText="Precio"       DataFormatString="${0:N2}" ItemStyle-Width="75px" />
+                        <asp:BoundField DataField="Categoria"   HeaderText="Categoria"    ItemStyle-Width="85px" />
+                        <asp:BoundField DataField="Stock"       HeaderText="Stock"        ItemStyle-Width="50px" ItemStyle-HorizontalAlign="Center" />
                         <asp:TemplateField HeaderText="Activo" ItemStyle-Width="50px">
                             <ItemTemplate>
                                 <asp:Label runat="server"
@@ -251,23 +288,88 @@
                 </asp:GridView>
 
                 <hr />
-                <!-- ===== SECCION C: BITACORA ===== -->
-                <h4>c) Bitacora del sistema</h4>
-                <p>
-                    Filtrar por usuario:&nbsp;
-                    <asp:TextBox ID="txtFiltroBit" runat="server" MaxLength="50" Width="150px" />
-                    &nbsp;
-                    <asp:Button ID="btnFiltrarBit" runat="server" Text="Filtrar"  CssClass="btn" OnClick="btnFiltrarBit_Click" />
-                    <asp:Button ID="btnVerTodoBit" runat="server" Text="Ver todo" CssClass="btn" OnClick="btnVerTodoBit_Click" />
-                </p>
-                <asp:GridView ID="gvBitacora" runat="server"
+                <!-- ===== SECCION C: CLIENTES ===== -->
+                <h4>c) Clientes registrados</h4>
+
+                <asp:GridView ID="gvClientes" runat="server"
                     AutoGenerateColumns="false" CssClass="tabla">
                     <Columns>
-                        <asp:BoundField DataField="FechaHora"     HeaderText="Fecha/Hora"
-                            DataFormatString="{0:dd/MM/yyyy HH:mm:ss}" ItemStyle-Width="140px" />
-                        <asp:BoundField DataField="NombreUsuario" HeaderText="Usuario"  ItemStyle-Width="80px" />
-                        <asp:BoundField DataField="Accion"        HeaderText="Accion"   ItemStyle-Width="120px" />
-                        <asp:BoundField DataField="Detalle"       HeaderText="Detalle" />
+                        <asp:BoundField DataField="IdCliente"  HeaderText="ID"        ItemStyle-Width="40px" />
+                        <asp:BoundField DataField="Nombre"     HeaderText="Nombre"    ItemStyle-Width="120px" />
+                        <asp:BoundField DataField="Apellido"   HeaderText="Apellido"  ItemStyle-Width="120px" />
+                        <asp:BoundField DataField="Email"      HeaderText="Email"     ItemStyle-Width="180px" />
+                        <asp:BoundField DataField="Telefono"   HeaderText="Telefono"  ItemStyle-Width="90px" />
+                        <asp:BoundField DataField="Direccion"  HeaderText="Direccion" />
+                        <asp:BoundField DataField="FechaAlta"  HeaderText="Alta"
+                            DataFormatString="{0:dd/MM/yyyy HH:mm}" ItemStyle-Width="120px" />
+                    </Columns>
+                </asp:GridView>
+
+                <hr />
+                <!-- ===== SECCION D: PEDIDOS ===== -->
+                <h4>d) Gestion de Pedidos</h4>
+
+                <asp:Label ID="lblMensajePedido" runat="server" CssClass="msg" Visible="false" />
+
+                <!-- Detalle del pedido seleccionado -->
+                <asp:Panel ID="pnlDetallePedidoAdmin" runat="server" Visible="false" CssClass="panel-form">
+                    <b><asp:Label ID="lblDetallePedidoTitulo" runat="server" /></b>
+                    <asp:GridView ID="gvDetallePedidoAdmin" runat="server"
+                        AutoGenerateColumns="false" CssClass="tabla" style="margin-top:6px;">
+                        <Columns>
+                            <asp:BoundField DataField="NombreProducto" HeaderText="Producto" />
+                            <asp:BoundField DataField="PrecioUnitario" HeaderText="Precio Unit."
+                                DataFormatString="${0:N2}" ItemStyle-Width="100px" />
+                            <asp:BoundField DataField="Cantidad"       HeaderText="Cantidad"  ItemStyle-Width="70px" />
+                            <asp:BoundField DataField="Subtotal"       HeaderText="Subtotal"
+                                DataFormatString="${0:N2}" ItemStyle-Width="90px" />
+                        </Columns>
+                    </asp:GridView>
+                    <br />
+                    <asp:Button ID="btnCerrarDetallePedido" runat="server" Text="Cerrar detalle"
+                        CssClass="btn" OnClick="btnCerrarDetallePedido_Click" />
+                </asp:Panel>
+
+                <!-- Grilla de pedidos -->
+                <asp:GridView ID="gvPedidos" runat="server"
+                    AutoGenerateColumns="false" CssClass="tabla"
+                    DataKeyNames="IdPedido"
+                    OnRowCommand="gvPedidos_RowCommand"
+                    OnRowDataBound="gvPedidos_RowDataBound">
+                    <Columns>
+                        <asp:BoundField DataField="IdPedido"      HeaderText="# Pedido"  ItemStyle-Width="65px" />
+                        <asp:BoundField DataField="NombreCliente" HeaderText="Cliente"   ItemStyle-Width="150px" />
+                        <asp:BoundField DataField="FechaPedido"   HeaderText="Fecha"
+                            DataFormatString="{0:dd/MM/yyyy HH:mm}" ItemStyle-Width="120px" />
+                        <asp:BoundField DataField="Total"         HeaderText="Total"
+                            DataFormatString="${0:N2}" ItemStyle-Width="75px" />
+                        <asp:BoundField DataField="Estado"        HeaderText="Estado"    ItemStyle-Width="130px" />
+                        <asp:BoundField DataField="ModificadoPor" HeaderText="Modificado por" ItemStyle-Width="100px" />
+                        <asp:TemplateField HeaderText="Avanzar" ItemStyle-Width="130px">
+                            <ItemTemplate>
+                                <asp:Button ID="btnAvanzarEstado" runat="server"
+                                    CommandName="AvanzarEstado"
+                                    CommandArgument='<%# Eval("IdPedido") %>'
+                                    CssClass="btn" Text="Avanzar" />
+                            </ItemTemplate>
+                        </asp:TemplateField>
+                        <asp:TemplateField HeaderText="Cancelar" ItemStyle-Width="70px">
+                            <ItemTemplate>
+                                <asp:Button ID="btnCancelarPedidoAdmin" runat="server"
+                                    CommandName="CancelarPedido"
+                                    CommandArgument='<%# Eval("IdPedido") %>'
+                                    CssClass="btn-danger" Text="Cancelar"
+                                    OnClientClick="return confirm('Cancelar este pedido y restaurar stock?')" />
+                            </ItemTemplate>
+                        </asp:TemplateField>
+                        <asp:TemplateField HeaderText="Detalle" ItemStyle-Width="75px">
+                            <ItemTemplate>
+                                <asp:Button ID="btnVerDetallePedido" runat="server"
+                                    CommandName="VerDetalle"
+                                    CommandArgument='<%# Eval("IdPedido") %>'
+                                    CssClass="btn" Text="Ver" />
+                            </ItemTemplate>
+                        </asp:TemplateField>
                     </Columns>
                 </asp:GridView>
 

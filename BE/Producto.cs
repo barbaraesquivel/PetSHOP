@@ -13,5 +13,6 @@ namespace BE
         public bool    Activo          { get; set; }
         public string  HashVerificador { get; set; }
         public bool    Eliminado       { get; set; }
+        public int     Stock           { get; set; }
     }
 }

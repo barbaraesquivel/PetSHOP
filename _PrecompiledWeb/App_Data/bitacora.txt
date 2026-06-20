@@ -5,3 +5,6 @@
 [2026-06-20 16:06:41] | sistema | DB_OK | Conexion a la base de datos exitosa
 [2026-06-20 16:36:23] | sistema | DB_OK | Conexion a la base de datos exitosa
 [2026-06-20 16:43:01] | sistema | DB_OK | Conexion a la base de datos exitosa
+[2026-06-20 17:09:15] | sistema | DB_OK | Conexion a la base de datos exitosa
+[2026-06-20 17:56:53] | sistema | DB_OK | Conexion a la base de datos exitosa
+[2026-06-20 18:03:39] | sistema | DB_OK | Conexion a la base de datos exitosa

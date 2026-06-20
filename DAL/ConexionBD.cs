@@ -1,5 +1,4 @@
 using System;
-using System.Configuration;
 using System.Data.SqlClient;
 using System.IO;
 using System.Web;
@@ -8,10 +7,11 @@ namespace DAL
 {
     public static class ConexionBD
     {
-        private static string ObtenerCadena()
-        {
-            return ConfigurationManager.ConnectionStrings["PetShopDB"].ConnectionString;
-        }
+        private const string CadenaConexion =
+            "Server=159.112.151.168;Database=PetShop;User Id=sa;Password=Barby846!;" +
+            "TrustServerCertificate=True;Encrypt=True;";
+
+        private static string ObtenerCadena() => CadenaConexion;
 
         public static SqlConnection ObtenerConexion()
         {

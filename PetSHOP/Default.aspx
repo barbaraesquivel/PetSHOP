@@ -111,6 +111,26 @@
                         <td><asp:TextBox ID="txtRegUsuario" runat="server" MaxLength="50" /></td>
                     </tr>
                     <tr>
+                        <td>Nombre:</td>
+                        <td><asp:TextBox ID="txtRegNombre" runat="server" MaxLength="100" /></td>
+                    </tr>
+                    <tr>
+                        <td>Apellido:</td>
+                        <td><asp:TextBox ID="txtRegApellido" runat="server" MaxLength="100" /></td>
+                    </tr>
+                    <tr>
+                        <td>Email:</td>
+                        <td><asp:TextBox ID="txtRegEmail" runat="server" MaxLength="200" /></td>
+                    </tr>
+                    <tr>
+                        <td>Telefono:</td>
+                        <td><asp:TextBox ID="txtRegTelefono" runat="server" MaxLength="50" /></td>
+                    </tr>
+                    <tr>
+                        <td>Direccion:</td>
+                        <td><asp:TextBox ID="txtRegDireccion" runat="server" MaxLength="300" /></td>
+                    </tr>
+                    <tr>
                         <td>Contrase&ntilde;a:</td>
                         <td><asp:TextBox ID="txtRegPass" runat="server" TextMode="Password" MaxLength="100" /></td>
                     </tr>
@@ -131,7 +151,7 @@
 
                 <hr />
                 <p style="margin:6px 0; font-size:13px;">
-                   ¿Ya tenes cuenta?&nbsp;
+                   Ya tenes cuenta?&nbsp;
                     <asp:LinkButton ID="btnIrLogin" runat="server"
                         CssClass="link-cambio" OnClick="btnIrLogin_Click">Iniciar sesion</asp:LinkButton>
                 </p>

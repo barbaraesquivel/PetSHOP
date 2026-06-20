@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Web.UI.WebControls;
 using BE;
+using BLL;
 using DAL;
 using SERV;
 
@@ -116,35 +117,118 @@ public partial class Carrito : System.Web.UI.Page
             cantItems += item.Cantidad;
         }
 
+        int idUsuario = (int)Session["IdUsuario"];
+        string nombreUsuario = Session["Usuario"].ToString();
+
         try
         {
             using (SqlConnection con = ConexionBD.ObtenerConexion())
             {
                 con.Open();
-
-                SqlCommand cmdPedido = new SqlCommand(
-                    @"INSERT INTO Pedidos (IdUsuario, FechaPedido, Total, Estado)
-                      OUTPUT INSERTED.IdPedido
-                      VALUES (@idUsuario, GETDATE(), @total, 'Activo')", con);
-                cmdPedido.Parameters.AddWithValue("@idUsuario", Session["IdUsuario"]);
-                cmdPedido.Parameters.AddWithValue("@total",     total);
-                int idPedido = (int)cmdPedido.ExecuteScalar();
-
-                foreach (var kvp in carrito)
+                SqlTransaction tx = con.BeginTransaction();
+                try
                 {
-                    SqlCommand cmdDetalle = new SqlCommand(
-                        @"INSERT INTO DetallePedido (IdPedido, NombreProducto, PrecioUnitario, Cantidad, Subtotal)
-                          VALUES (@idPedido, @nombre, @precio, @cantidad, @subtotal)", con);
-                    cmdDetalle.Parameters.AddWithValue("@idPedido",  idPedido);
-                    cmdDetalle.Parameters.AddWithValue("@nombre",    kvp.Value.Nombre);
-                    cmdDetalle.Parameters.AddWithValue("@precio",    kvp.Value.Precio);
-                    cmdDetalle.Parameters.AddWithValue("@cantidad",  kvp.Value.Cantidad);
-                    cmdDetalle.Parameters.AddWithValue("@subtotal",  kvp.Value.Subtotal);
-                    cmdDetalle.ExecuteNonQuery();
+                    // Obtener o crear el registro de Cliente
+                    int idCliente;
+                    Cliente clienteExistente = ClienteBLL.GetByIdUsuario(idUsuario);
+
+                    if (clienteExistente != null)
+                    {
+                        idCliente = clienteExistente.IdCliente;
+                    }
+                    else
+                    {
+                        // Leer datos personales guardados en Usuarios al registrarse
+                        SqlCommand cmdDatos = new SqlCommand(
+                            "SELECT Nombre, Apellido, Email, Telefono, Direccion FROM Usuarios WHERE IdUsuario = @id",
+                            con, tx);
+                        cmdDatos.Parameters.AddWithValue("@id", idUsuario);
+                        SqlDataReader rDatos = cmdDatos.ExecuteReader();
+                        string nombre = "", apellido = "", email = "", telefono = "", direccion = "";
+                        if (rDatos.Read())
+                        {
+                            nombre    = rDatos["Nombre"]    == DBNull.Value ? "" : rDatos["Nombre"].ToString();
+                            apellido  = rDatos["Apellido"]  == DBNull.Value ? "" : rDatos["Apellido"].ToString();
+                            email     = rDatos["Email"]     == DBNull.Value ? "" : rDatos["Email"].ToString();
+                            telefono  = rDatos["Telefono"]  == DBNull.Value ? "" : rDatos["Telefono"].ToString();
+                            direccion = rDatos["Direccion"] == DBNull.Value ? "" : rDatos["Direccion"].ToString();
+                        }
+                        rDatos.Close();
+
+                        if (nombre == "" || apellido == "" || email == "")
+                        {
+                            lblConfirmacion.Text    = "Antes de confirmar el pedido completa tus datos personales en <a href='MiPerfil.aspx'>Mi Perfil</a>.";
+                            lblConfirmacion.Visible = true;
+                            tx.Rollback();
+                            return;
+                        }
+
+                        idCliente = ClienteBLL.Crear(con, tx, idUsuario, nombre, apellido, email, telefono, direccion);
+                        Bitacora.Registrar(nombreUsuario, "CLIENTE_NUEVO", "Primera compra - cliente registrado Id:" + idCliente);
+                    }
+
+                    // Verificar y descontar stock atomicamente
+                    foreach (var kvp in carrito)
+                    {
+                        int idProd   = kvp.Key;
+                        int cantidad = kvp.Value.Cantidad;
+
+                        SqlCommand cmdStock = new SqlCommand(
+                            "UPDATE Productos SET Stock = Stock - @cant WHERE IdProducto = @id AND Stock >= @cant",
+                            con, tx);
+                        cmdStock.Parameters.AddWithValue("@cant", cantidad);
+                        cmdStock.Parameters.AddWithValue("@id",   idProd);
+                        int afectadas = (int)cmdStock.ExecuteNonQuery();
+
+                        if (afectadas == 0)
+                        {
+                            SqlCommand cmdGetStock = new SqlCommand(
+                                "SELECT Nombre, Stock FROM Productos WHERE IdProducto = @id", con, tx);
+                            cmdGetStock.Parameters.AddWithValue("@id", idProd);
+                            SqlDataReader rStock = cmdGetStock.ExecuteReader();
+                            string msgStock = "Stock insuficiente";
+                            if (rStock.Read())
+                                msgStock = "Stock insuficiente para '" + rStock["Nombre"] + "'. Disponible: " + rStock["Stock"] + ", solicitado: " + cantidad;
+                            rStock.Close();
+                            throw new Exception(msgStock);
+                        }
+                    }
+
+                    // Insertar pedido usando IdCliente
+                    SqlCommand cmdPedido = new SqlCommand(
+                        @"INSERT INTO Pedidos (IdCliente, FechaPedido, Total, Estado)
+                          OUTPUT INSERTED.IdPedido
+                          VALUES (@idCliente, GETDATE(), @total, 'Pendiente')",
+                        con, tx);
+                    cmdPedido.Parameters.AddWithValue("@idCliente", idCliente);
+                    cmdPedido.Parameters.AddWithValue("@total",     total);
+                    int idPedido = (int)cmdPedido.ExecuteScalar();
+
+                    foreach (var kvp in carrito)
+                    {
+                        SqlCommand cmdDetalle = new SqlCommand(
+                            @"INSERT INTO DetallePedido (IdPedido, NombreProducto, PrecioUnitario, Cantidad, Subtotal, IdProducto)
+                              VALUES (@idPedido, @nombre, @precio, @cantidad, @subtotal, @idProducto)",
+                            con, tx);
+                        cmdDetalle.Parameters.AddWithValue("@idPedido",   idPedido);
+                        cmdDetalle.Parameters.AddWithValue("@nombre",     kvp.Value.Nombre);
+                        cmdDetalle.Parameters.AddWithValue("@precio",     kvp.Value.Precio);
+                        cmdDetalle.Parameters.AddWithValue("@cantidad",   kvp.Value.Cantidad);
+                        cmdDetalle.Parameters.AddWithValue("@subtotal",   kvp.Value.Subtotal);
+                        cmdDetalle.Parameters.AddWithValue("@idProducto", kvp.Key);
+                        cmdDetalle.ExecuteNonQuery();
+                    }
+
+                    tx.Commit();
+                }
+                catch
+                {
+                    tx.Rollback();
+                    throw;
                 }
             }
 
-            Bitacora.Registrar(Session["Usuario"].ToString(), "PEDIDO",
+            Bitacora.Registrar(nombreUsuario, "PEDIDO",
                 cantItems + " items - Total: $" + total.ToString("N2"));
 
             Session["Carrito"] = new Dictionary<int, ItemCarrito>();

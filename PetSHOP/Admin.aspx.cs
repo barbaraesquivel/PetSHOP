@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Web.UI.WebControls;
+using BE;
 using BLL;
 using DAL;
 using SEGURIDAD;
@@ -53,12 +55,12 @@ public partial class Admin : System.Web.UI.Page
 
         CargarUsuarios();
         CargarProductos();
+        CargarClientes();
+        CargarAlertaStock();
+        CargarPedidos();
 
         if (!IsPostBack)
-        {
-            CargarBitacora("");
             Bitacora.Registrar(Session["Usuario"].ToString(), "ACCESO", "Admin.aspx");
-        }
     }
 
     // ===== CARGA DE GRILLAS =====
@@ -93,7 +95,7 @@ public partial class Admin : System.Web.UI.Page
             {
                 con.Open();
                 SqlDataAdapter da = new SqlDataAdapter(
-                    "SELECT IdProducto, Nombre, Descripcion, Precio, Categoria, Activo FROM Productos ORDER BY Nombre", con);
+                    "SELECT IdProducto, Nombre, Descripcion, Precio, Categoria, Stock, Activo FROM Productos ORDER BY Nombre", con);
                 DataTable dt = new DataTable();
                 da.Fill(dt);
                 gvProductos.DataSource = dt;
@@ -499,47 +501,244 @@ public partial class Admin : System.Web.UI.Page
         pnlEditarProducto.Visible = false;
     }
 
-    // ===== BITACORA =====
+    // ===== STOCK =====
 
-    private void CargarBitacora(string filtroUsuario)
+    protected void btnGestionarStock_Click(object sender, EventArgs e)
+    {
+        int id;
+        if (!int.TryParse(hfSelectedProdId.Value, out id) || id <= 0)
+        {
+            MostrarMensaje("Seleccione un producto de la tabla primero.", true);
+            return;
+        }
+
+        try
+        {
+            using (SqlConnection con = ConexionBD.ObtenerConexion())
+            {
+                con.Open();
+                SqlCommand cmd = new SqlCommand(
+                    "SELECT Nombre, Stock FROM Productos WHERE IdProducto=@id", con);
+                cmd.Parameters.AddWithValue("@id", id);
+                SqlDataReader r = cmd.ExecuteReader();
+                if (r.Read())
+                {
+                    hfIdStockEdit.Value        = id.ToString();
+                    lblNombreStock.Text        = r["Nombre"].ToString();
+                    lblStockActual.Text        = r["Stock"].ToString();
+                    txtNuevoStock.Text         = r["Stock"].ToString();
+                    pnlActualizarStock.Visible = true;
+                    Page.ClientScript.RegisterStartupScript(GetType(), "scrollStock",
+                        "document.getElementById('" + pnlActualizarStock.ClientID + "').scrollIntoView({behavior:'smooth'});", true);
+                }
+                r.Close();
+            }
+        }
+        catch (Exception ex)
+        {
+            MostrarMensaje("Error al cargar stock: " + ex.Message, true);
+        }
+    }
+
+    protected void btnActualizarStock_Click(object sender, EventArgs e)
+    {
+        int id = int.Parse(hfIdStockEdit.Value);
+        int nuevoStock;
+        if (!int.TryParse(txtNuevoStock.Text.Trim(), out nuevoStock) || nuevoStock < 0)
+        {
+            MostrarMensaje("Stock invalido. Debe ser un numero entero mayor o igual a 0.", true);
+            return;
+        }
+
+        try
+        {
+            string nombreProd    = "";
+            int    stockAnterior = 0;
+
+            using (SqlConnection con = ConexionBD.ObtenerConexion())
+            {
+                con.Open();
+                SqlCommand cmdGet = new SqlCommand(
+                    "SELECT Nombre, Stock FROM Productos WHERE IdProducto=@id", con);
+                cmdGet.Parameters.AddWithValue("@id", id);
+                SqlDataReader r = cmdGet.ExecuteReader();
+                if (r.Read())
+                {
+                    nombreProd    = r["Nombre"].ToString();
+                    stockAnterior = (int)r["Stock"];
+                }
+                r.Close();
+
+                SqlCommand cmdUpd = new SqlCommand(
+                    "UPDATE Productos SET Stock=@s WHERE IdProducto=@id", con);
+                cmdUpd.Parameters.AddWithValue("@s",  nuevoStock);
+                cmdUpd.Parameters.AddWithValue("@id", id);
+                cmdUpd.ExecuteNonQuery();
+            }
+
+            Bitacora.Registrar(Session["Usuario"].ToString(), "STOCK_ACTUALIZADO",
+                "Producto: " + nombreProd + " | Anterior: " + stockAnterior + " | Nuevo: " + nuevoStock);
+
+            pnlActualizarStock.Visible = false;
+            MostrarMensaje("Stock de '" + nombreProd + "' actualizado: " + stockAnterior + " -> " + nuevoStock + ".", false);
+            CargarProductos();
+            CargarAlertaStock();
+        }
+        catch (Exception ex)
+        {
+            MostrarMensaje("Error al actualizar stock: " + ex.Message, true);
+        }
+    }
+
+    protected void btnCancelarStock_Click(object sender, EventArgs e)
+    {
+        pnlActualizarStock.Visible = false;
+    }
+
+    private void CargarAlertaStock()
     {
         try
         {
             using (SqlConnection con = ConexionBD.ObtenerConexion())
             {
                 con.Open();
-                string sql = "SELECT FechaHora, NombreUsuario, Accion, Detalle FROM LogBitacora";
-                if (!string.IsNullOrEmpty(filtroUsuario))
-                    sql += " WHERE NombreUsuario = @usuario";
-                sql += " ORDER BY FechaHora DESC";
-
-                SqlCommand cmd = new SqlCommand(sql, con);
-                if (!string.IsNullOrEmpty(filtroUsuario))
-                    cmd.Parameters.AddWithValue("@usuario", filtroUsuario);
-
-                SqlDataAdapter da = new SqlDataAdapter(cmd);
+                SqlDataAdapter da = new SqlDataAdapter(
+                    "SELECT IdProducto, Nombre, Stock FROM Productos WHERE Activo=1 AND Eliminado=0 AND Stock <= 5 ORDER BY Stock, Nombre", con);
                 DataTable dt = new DataTable();
                 da.Fill(dt);
-                gvBitacora.DataSource = dt;
-                gvBitacora.DataBind();
+                pnlAlertaStock.Visible = dt.Rows.Count > 0;
+                if (dt.Rows.Count > 0)
+                {
+                    gvAlertaStock.DataSource = dt;
+                    gvAlertaStock.DataBind();
+                }
             }
+        }
+        catch { }
+    }
+
+    // ===== CLIENTES =====
+
+    private void CargarClientes()
+    {
+        try
+        {
+            List<Cliente> clientes = ClienteBLL.GetAll();
+            gvClientes.DataSource = clientes;
+            gvClientes.DataBind();
         }
         catch (Exception ex)
         {
-            MostrarMensaje("Error al cargar bitacora: " + ex.Message, true);
+            MostrarMensaje("Error al cargar clientes: " + ex.Message, true);
         }
     }
 
-    protected void btnFiltrarBit_Click(object sender, EventArgs e)
+    // ===== PEDIDOS =====
+
+    private void CargarPedidos()
     {
-        CargarBitacora(txtFiltroBit.Text.Trim());
+        try
+        {
+            DataTable dt = PedidoBLL.GetAllAdmin();
+            gvPedidos.DataSource = dt;
+            gvPedidos.DataBind();
+        }
+        catch (Exception ex)
+        {
+            MostrarMensaje("Error al cargar pedidos: " + ex.Message, true);
+        }
     }
 
-    protected void btnVerTodoBit_Click(object sender, EventArgs e)
+    protected void gvPedidos_RowDataBound(object sender, GridViewRowEventArgs e)
     {
-        txtFiltroBit.Text = "";
-        CargarBitacora("");
+        if (e.Row.RowType != DataControlRowType.DataRow) return;
+
+        DataRowView drv    = (DataRowView)e.Row.DataItem;
+        string      estado = drv["Estado"].ToString();
+
+        Button btnAvanzar  = (Button)e.Row.FindControl("btnAvanzarEstado");
+        Button btnCancelar = (Button)e.Row.FindControl("btnCancelarPedidoAdmin");
+
+        if (btnAvanzar != null)
+        {
+            string siguiente = PedidoBLL.GetSiguienteEstado(estado);
+            btnAvanzar.Text    = siguiente != null ? PedidoBLL.GetEtiquetaAvance(estado) : "-";
+            btnAvanzar.Enabled = siguiente != null;
+        }
+
+        if (btnCancelar != null)
+            btnCancelar.Visible = PedidoBLL.PuedeCancelarAdmin(estado);
     }
+
+    protected void gvPedidos_RowCommand(object sender, GridViewCommandEventArgs e)
+    {
+        int idPedido = int.Parse(e.CommandArgument.ToString());
+
+        if (e.CommandName == "AvanzarEstado")
+        {
+            try
+            {
+                string usr        = Session["Usuario"].ToString();
+                string nuevoEstado = PedidoBLL.AvanzarEstado(idPedido, usr);
+                Bitacora.Registrar(usr, "PEDIDO_AVANCE", "Pedido #" + idPedido + " -> " + nuevoEstado);
+                MostrarMensaje("Pedido #" + idPedido + " avanzado a: " + nuevoEstado, false);
+                CargarPedidos();
+                CargarAlertaStock();
+            }
+            catch (Exception ex)
+            {
+                MostrarMensaje("Error al avanzar estado: " + ex.Message, true);
+            }
+        }
+        else if (e.CommandName == "CancelarPedido")
+        {
+            try
+            {
+                string usr          = Session["Usuario"].ToString();
+                string estadoPrevio = PedidoBLL.Cancelar(idPedido, usr, esAdmin: true);
+                Bitacora.Registrar(usr, "PEDIDO_CANCELADO", "Pedido #" + idPedido + ": " + estadoPrevio + " -> Cancelado");
+                MostrarMensaje("Pedido #" + idPedido + " cancelado. Stock restaurado.", false);
+                pnlDetallePedidoAdmin.Visible = false;
+                CargarPedidos();
+                CargarAlertaStock();
+            }
+            catch (Exception ex)
+            {
+                MostrarMensaje("Error al cancelar: " + ex.Message, true);
+            }
+        }
+        else if (e.CommandName == "VerDetalle")
+        {
+            try
+            {
+                DataTable dt = PedidoBLL.GetDetalleByPedido(idPedido);
+                lblDetallePedidoTitulo.Text   = "Detalle del pedido #" + idPedido;
+                gvDetallePedidoAdmin.DataSource = dt;
+                gvDetallePedidoAdmin.DataBind();
+                pnlDetallePedidoAdmin.Visible = true;
+                Page.ClientScript.RegisterStartupScript(GetType(), "scrollDetalle",
+                    "document.getElementById('" + pnlDetallePedidoAdmin.ClientID + "').scrollIntoView({behavior:'smooth'});", true);
+            }
+            catch (Exception ex)
+            {
+                MostrarMensaje("Error al ver detalle: " + ex.Message, true);
+            }
+        }
+    }
+
+    protected void btnCerrarDetallePedido_Click(object sender, EventArgs e)
+    {
+        pnlDetallePedidoAdmin.Visible = false;
+    }
+
+    private void MostrarMensajePedido(string texto, bool esError)
+    {
+        lblMensajePedido.Text     = texto;
+        lblMensajePedido.CssClass = esError ? "msg msg-err" : "msg msg-ok";
+        lblMensajePedido.Visible  = true;
+    }
+
+    // ===== MENSAJES =====
 
     private void MostrarMensaje(string texto, bool esError)
     {

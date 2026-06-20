@@ -101,14 +101,18 @@ public partial class _Default : System.Web.UI.Page
 
     protected void btnRegistrar_Click(object sender, EventArgs e)
     {
-        string nombre = txtRegUsuario.Text.Trim().ToLower();
-        string pass   = txtRegPass.Text;
-        string conf   = txtRegConfirm.Text;
+        string nombre    = txtRegUsuario.Text.Trim().ToLower();
+        string regNombre = txtRegNombre.Text.Trim();
+        string apellido  = txtRegApellido.Text.Trim();
+        string email     = txtRegEmail.Text.Trim();
+        string telefono  = txtRegTelefono.Text.Trim();
+        string direccion = txtRegDireccion.Text.Trim();
+        string pass      = txtRegPass.Text;
+        string conf      = txtRegConfirm.Text;
 
-
-        if (nombre == "" || pass == "")
+        if (nombre == "" || regNombre == "" || apellido == "" || email == "" || pass == "")
         {
-            MostrarRegError("El nombre de usuario y la contrasena son obligatorios.");
+            MostrarRegError("Usuario, nombre, apellido, email y contrasena son obligatorios.");
             return;
         }
 
@@ -143,17 +147,28 @@ public partial class _Default : System.Web.UI.Page
 
                 string hash = Encriptacion.HashSHA256(pass);
                 SqlCommand cmd = new SqlCommand(
-                    "INSERT INTO Usuarios (NombreUsuario, PasswordHash, Rol) VALUES (@n, @h, 'Usuario')", con);
-                cmd.Parameters.AddWithValue("@n", nombre);
-                cmd.Parameters.AddWithValue("@h", hash);
+                    @"INSERT INTO Usuarios (NombreUsuario, PasswordHash, Rol, Nombre, Apellido, Email, Telefono, Direccion)
+                      VALUES (@n, @h, 'Usuario', @nombre, @apellido, @email, @telefono, @direccion)", con);
+                cmd.Parameters.AddWithValue("@n",         nombre);
+                cmd.Parameters.AddWithValue("@h",         hash);
+                cmd.Parameters.AddWithValue("@nombre",    regNombre);
+                cmd.Parameters.AddWithValue("@apellido",  apellido);
+                cmd.Parameters.AddWithValue("@email",     email);
+                cmd.Parameters.AddWithValue("@telefono",  telefono == "" ? (object)DBNull.Value : telefono);
+                cmd.Parameters.AddWithValue("@direccion", direccion == "" ? (object)DBNull.Value : direccion);
                 cmd.ExecuteNonQuery();
             }
 
-            Bitacora.Registrar(nombre, "REGISTRO", "Nuevo usuario registrado desde el login");
+            Bitacora.Registrar(nombre, "REGISTRO", "Nuevo usuario: " + regNombre + " " + apellido + " <" + email + ">");
 
-            txtRegUsuario.Text = "";
-            txtRegPass.Text    = "";
-            txtRegConfirm.Text = "";
+            txtRegUsuario.Text  = "";
+            txtRegNombre.Text   = "";
+            txtRegApellido.Text = "";
+            txtRegEmail.Text    = "";
+            txtRegTelefono.Text = "";
+            txtRegDireccion.Text = "";
+            txtRegPass.Text     = "";
+            txtRegConfirm.Text  = "";
             pnlRegistro.Visible = false;
             pnlLogin.Visible    = true;
             lblError.Text       = "Cuenta creada correctamente. Ya podes iniciar sesion.";

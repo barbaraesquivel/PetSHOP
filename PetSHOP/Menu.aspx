@@ -75,10 +75,19 @@
             font-weight: bold;
             margin: 5px 0;
         }
+        .mensaje-error {
+            color: red;
+            font-weight: bold;
+            margin: 5px 0;
+        }
         .precio {
             font-weight: bold;
             color: #2e7d32;
         }
+        .stock-ok   { color: #2e7d32; font-weight: bold; }
+        .stock-bajo { color: #e65100; font-weight: bold; }
+        .stock-cero { color: #cc0000; font-weight: bold; }
+        .sin-stock  { color: #cc0000; font-style: italic; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -91,6 +100,10 @@
             Bienvenido: <asp:Label ID="lblUsuario" runat="server" />
             &nbsp;&nbsp;|&nbsp;&nbsp;
             <a href="Carrito.aspx">Ver carrito (<asp:Label ID="lblCantCarrito" runat="server" Text="0" />)</a>
+            &nbsp;&nbsp;|&nbsp;&nbsp;
+            <a href="MisPedidos.aspx">Mis Pedidos</a>
+            &nbsp;&nbsp;|&nbsp;&nbsp;
+            <a href="MiPerfil.aspx">Mi Perfil</a>
             &nbsp;&nbsp;|&nbsp;&nbsp;
             <asp:HyperLink ID="lnkAdmin" runat="server" NavigateUrl="Admin.aspx"
                 ForeColor="White" Visible="false">Panel Admin</asp:HyperLink>
@@ -142,14 +155,25 @@
                         DataFormatString="${0:N2}"
                         ItemStyle-CssClass="precio"
                         ItemStyle-Width="80px" />
+                    <asp:TemplateField HeaderText="Stock" ItemStyle-Width="60px" ItemStyle-HorizontalAlign="Center">
+                        <ItemTemplate>
+                            <asp:Label runat="server"
+                                Text='<%# Eval("Stock") %>'
+                                CssClass='<%# (int)DataBinder.Eval(Container.DataItem,"Stock") == 0 ? "stock-cero" : ((int)DataBinder.Eval(Container.DataItem,"Stock") <= 5 ? "stock-bajo" : "stock-ok") %>' />
+                        </ItemTemplate>
+                    </asp:TemplateField>
                     <asp:TemplateField HeaderText="Accion" ItemStyle-Width="100px">
                         <ItemTemplate>
-                            <asp:LinkButton runat="server"
+                            <asp:LinkButton ID="lnkAgregar" runat="server"
                                 CommandName="AgregarAlCarrito"
                                 CommandArgument='<%# Eval("IdProducto") %>'
-                                CssClass="btn-agregar">
+                                CssClass="btn-agregar"
+                                Visible='<%# (int)DataBinder.Eval(Container.DataItem,"Stock") > 0 %>'>
                                 + Agregar
                             </asp:LinkButton>
+                            <asp:Label ID="lblSinStock" runat="server"
+                                CssClass="sin-stock" Text="Sin stock"
+                                Visible='<%# (int)DataBinder.Eval(Container.DataItem,"Stock") == 0 %>' />
                         </ItemTemplate>
                     </asp:TemplateField>
                 </Columns>
