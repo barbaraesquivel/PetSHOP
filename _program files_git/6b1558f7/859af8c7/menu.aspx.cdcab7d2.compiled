@@ -1,0 +1,7 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<preserve resultType="3" virtualPath="/C:/Program Files/Git/Menu.aspx" hash="822a9cdff" filehash="c535ddb46f3f04f6" flags="110000" assembly="App_Web_14cxkim5" type="ASP.menu_aspx">
+    <filedeps>
+        <filedep name="/C:/Program Files/Git/Menu.aspx" />
+        <filedep name="/C:/Program Files/Git/Menu.aspx.cs" />
+    </filedeps>
+</preserve>

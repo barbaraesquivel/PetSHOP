@@ -1,5 +1,8 @@
 using System;
 using System.Data.SqlClient;
+using DAL;
+using SEGURIDAD;
+using SERV;
 
 public partial class _Default : System.Web.UI.Page
 {
@@ -41,10 +44,25 @@ public partial class _Default : System.Web.UI.Page
                 {
                     Session["IdUsuario"] = (int)reader["IdUsuario"];
                     Session["Usuario"]   = reader["NombreUsuario"].ToString();
-                    Session["Rol"]       = reader["Rol"].ToString();
+                    string rol           = reader["Rol"].ToString();
+                    Session["Rol"]       = rol;
                     reader.Close();
-                    Bitacora.Registrar(usuario, "LOGIN", "Login exitoso - Rol: " + Session["Rol"]);
-                    Response.Redirect("Menu.aspx", false);
+
+                    bool bloqueado = Application["SistemaBlockeado"] != null && (bool)Application["SistemaBlockeado"];
+                    if (bloqueado && rol != "WebMaster")
+                    {
+                        Session.Clear();
+                        Session.Abandon();
+                        Bitacora.Registrar(usuario, "LOGIN_BLOQUEADO", "Sistema bloqueado - acceso denegado");
+                        Response.Redirect("Error.aspx?motivo=integridad", false);
+                        return;
+                    }
+
+                    Bitacora.Registrar(usuario, "LOGIN", "Login exitoso - Rol: " + rol);
+                    if (bloqueado)
+                        Response.Redirect("WebMaster.aspx", false);
+                    else
+                        Response.Redirect("Menu.aspx", false);
                     return;
                 }
                 else

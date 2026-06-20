@@ -1,0 +1,7 @@
+[2026-06-01 10:25:14] | sistema | DB_OK | Conexion a la base de datos exitosa
+[2026-06-20 15:08:51] | sistema | DB_OK | Conexion a la base de datos exitosa
+[2026-06-20 15:35:18] | sistema | DB_OK | Conexion a la base de datos exitosa
+[2026-06-20 15:48:26] | sistema | DB_OK | Conexion a la base de datos exitosa
+[2026-06-20 16:06:41] | sistema | DB_OK | Conexion a la base de datos exitosa
+[2026-06-20 16:36:23] | sistema | DB_OK | Conexion a la base de datos exitosa
+[2026-06-20 16:43:01] | sistema | DB_OK | Conexion a la base de datos exitosa

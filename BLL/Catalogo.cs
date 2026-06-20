@@ -1,9 +1,24 @@
+using System.Globalization;
+using SEGURIDAD;
 
-public static class Catalogo
+namespace BLL
 {
-    // Calcula el hash verificador de un producto a partir de sus datos clave
-    public static string CalcularHash(Producto p)
+    public static class Catalogo
     {
-        return Encriptacion.HashSHA256(p.Nombre + p.Precio.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + p.Categoria);
+        // Unico punto de calculo del hash de integridad de un producto.
+        // Incluye IdProducto para detectar intercambio de filas y Descripcion
+        // para detectar modificaciones en ese campo. Activo y Eliminado se
+        // excluyen porque cambian legitimamente desde el panel admin.
+        // El separador | evita colisiones por concatenacion de campos.
+        public static string CalcularHash(int id, string nombre, string descripcion,
+                                          decimal precio, string categoria)
+        {
+            string entrada = id   + "|"
+                           + nombre + "|"
+                           + (descripcion ?? "") + "|"
+                           + precio.ToString("F2", CultureInfo.InvariantCulture) + "|"
+                           + categoria;
+            return Encriptacion.HashSHA256(entrada);
+        }
     }
 }

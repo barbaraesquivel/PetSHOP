@@ -2,12 +2,26 @@ using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Web.UI.WebControls;
+using BE;
+using DAL;
+using SERV;
 
 public partial class Carrito : System.Web.UI.Page
 {
     protected void Page_Load(object sender, EventArgs e)
     {
         if (!SessionHelper.VerificarRol(this, "Usuario")) return;
+
+        bool bloqueado = Application["SistemaBlockeado"] != null && (bool)Application["SistemaBlockeado"];
+        if (bloqueado)
+        {
+            string rol = Session["Rol"] != null ? Session["Rol"].ToString() : "";
+            if (rol == "WebMaster")
+                Response.Redirect("WebMaster.aspx", false);
+            else
+                Response.Redirect("Error.aspx?motivo=integridad", false);
+            return;
+        }
 
         if (!SessionHelper.VerificarDB(this))
         {

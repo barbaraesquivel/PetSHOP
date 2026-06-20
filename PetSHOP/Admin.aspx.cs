@@ -2,6 +2,10 @@ using System;
 using System.Data;
 using System.Data.SqlClient;
 using System.Web.UI.WebControls;
+using BLL;
+using DAL;
+using SEGURIDAD;
+using SERV;
 
 public partial class Admin : System.Web.UI.Page
 {
@@ -15,6 +19,16 @@ public partial class Admin : System.Web.UI.Page
         {
             pnlDenegado.Visible  = true;
             pnlContenido.Visible = false;
+            return;
+        }
+
+        bool bloqueado = Application["SistemaBlockeado"] != null && (bool)Application["SistemaBlockeado"];
+        if (bloqueado)
+        {
+            if (rol == "WebMaster")
+                Response.Redirect("WebMaster.aspx", false);
+            else
+                Response.Redirect("Error.aspx?motivo=integridad", false);
             return;
         }
 
@@ -322,19 +336,27 @@ public partial class Admin : System.Web.UI.Page
 
         try
         {
-            string hash = Encriptacion.HashSHA256(nombre + precio.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + categoria);
             using (SqlConnection con = ConexionBD.ObtenerConexion())
             {
                 con.Open();
+                // Paso 1: insertar y obtener el IdProducto generado
                 SqlCommand cmd = new SqlCommand(
                     @"INSERT INTO Productos (Nombre, Descripcion, Precio, Categoria, Activo, HashVerificador)
-                      VALUES (@n, @d, @p, @c, 1, @h)", con);
+                      OUTPUT INSERTED.IdProducto
+                      VALUES (@n, @d, @p, @c, 1, '')", con);
                 cmd.Parameters.AddWithValue("@n", nombre);
                 cmd.Parameters.AddWithValue("@d", desc == "" ? (object)DBNull.Value : (object)desc);
                 cmd.Parameters.AddWithValue("@p", precio);
                 cmd.Parameters.AddWithValue("@c", categoria);
-                cmd.Parameters.AddWithValue("@h", hash);
-                cmd.ExecuteNonQuery();
+                int idNuevo = (int)cmd.ExecuteScalar();
+
+                // Paso 2: calcular hash con el id real y actualizar
+                string hash = Catalogo.CalcularHash(idNuevo, nombre, desc, precio, categoria);
+                SqlCommand upd = new SqlCommand(
+                    "UPDATE Productos SET HashVerificador=@h WHERE IdProducto=@id", con);
+                upd.Parameters.AddWithValue("@h",  hash);
+                upd.Parameters.AddWithValue("@id", idNuevo);
+                upd.ExecuteNonQuery();
             }
             Bitacora.Registrar(Session["Usuario"].ToString(), "AGREGAR_PRODUCTO", "Producto: " + nombre);
             txtNombreP.Text = "";
@@ -445,7 +467,7 @@ public partial class Admin : System.Web.UI.Page
 
         try
         {
-            string hash = Encriptacion.HashSHA256(nombre + precio.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + categoria);
+            string hash = Catalogo.CalcularHash(id, nombre, desc, precio, categoria);
             using (SqlConnection con = ConexionBD.ObtenerConexion())
             {
                 con.Open();
